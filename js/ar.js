@@ -6,6 +6,8 @@ const config = {
   videoSrc: '',
   planeAspect: 1.5,
   planeScale: 1,
+  planeOffsetX: 0,
+  planeOffsetY: 0,
   brightness: 1,
   alphaThreshold: 0.5,
   warmupTolerance: 0,
@@ -97,6 +99,7 @@ async function startAR() {
 
   const geometry = new THREE.PlaneGeometry(1, config.planeAspect);
   const plane = new THREE.Mesh(geometry, material);
+  plane.position.set(config.planeOffsetX, config.planeOffsetY, 0);
   plane.scale.set(config.planeScale, config.planeScale, 1);
   anchor.group.add(plane);
 
