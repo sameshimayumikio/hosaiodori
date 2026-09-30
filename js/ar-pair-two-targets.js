@@ -10,6 +10,8 @@ const config = {
   planeScale: 1,
   planeOffsetX: 0,
   planeOffsetY: 0,
+  settleBeforeVideoLoadMs: 0,
+  resetTrackingFilterBeforeLoad: false,
   brightness: 1,
   alphaThreshold: 0.5,
   warmupTolerance: 0,
@@ -138,6 +140,7 @@ async function startAR() {
   let playbackReady = false;
   let videoLoadStarted = false;
   let previewPreparing = false;
+  let settleTimer = null;
 
   const showLoading = () => {
     if (pairActive) loadingOverlay.style.display = 'block';
@@ -213,6 +216,39 @@ async function startAR() {
 
   const bufferCheckTimer = window.setInterval(updatePlaybackReady, 250);
 
+  const resetTrackingFilter = (targetIndex) => {
+    const trackingState = mindarThree.controller?.trackingStates?.[targetIndex];
+    if (trackingState?.filter?.reset) {
+      trackingState.filter.reset();
+    }
+  };
+
+  const beginVideoLoadAfterSettle = () => {
+    const begin = () => {
+      if (!pairActive || !foundA || !foundB) return;
+
+      if (config.resetTrackingFilterBeforeLoad) {
+        // Re-seed the very strong tracking filter from the pose that exists
+        // after the initial camera/recognition transient has settled.
+        resetTrackingFilter(config.targetIndexA);
+      }
+
+      // Give MindAR at least one render cycle to publish the re-seeded pose
+      // before the relatively heavy MP4 download/decode starts.
+      window.requestAnimationFrame(() => {
+        if (!pairActive || !foundA || !foundB) return;
+        startVideoLoad();
+        updatePlaybackReady();
+      });
+    };
+
+    if (config.settleBeforeVideoLoadMs > 0) {
+      settleTimer = window.setTimeout(begin, config.settleBeforeVideoLoadMs);
+    } else {
+      begin();
+    }
+  };
+
   const activatePair = () => {
     if (pairActive || !foundA || !foundB) return;
 
@@ -223,8 +259,7 @@ async function startAR() {
     playIcon.classList.remove('visible');
 
     showLoading();
-    startVideoLoad();
-    updatePlaybackReady();
+    beginVideoLoadAfterSettle();
   };
 
   const deactivatePair = () => {
@@ -232,6 +267,10 @@ async function startAR() {
 
     pairActive = false;
     playbackReady = false;
+    if (settleTimer !== null) {
+      window.clearTimeout(settleTimer);
+      settleTimer = null;
+    }
     video.pause();
     hideLoading();
     pairRoot.visible = false;
@@ -287,6 +326,9 @@ async function startAR() {
 
   window.addEventListener('beforeunload', () => {
     window.clearInterval(bufferCheckTimer);
+    if (settleTimer !== null) {
+      window.clearTimeout(settleTimer);
+    }
   });
 
   // Both targets are required to activate the pair AR,
