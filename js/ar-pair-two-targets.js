@@ -17,6 +17,8 @@ const config = {
   maxScaleJumpRatio: 0.12,
   maxRotationJumpDeg: 15,
   outlierResetFrames: 3,
+  lockScale: false,
+  scaleLockFrames: 15,
   brightness: 1,
   alphaThreshold: 0.5,
   warmupTolerance: 0,
@@ -250,6 +252,9 @@ async function startAR() {
     playbackReady = false;
     trackingInitialized = false;
     consecutiveOutliers = 0;
+    lockedBaseScale = null;
+    scaleSampleSum = 0;
+    scaleSampleCount = 0;
     video.pause();
     hideLoading();
     pairRoot.visible = false;
@@ -319,6 +324,10 @@ async function startAR() {
   let trackingInitialized = false;
   let consecutiveOutliers = 0;
 
+  let lockedBaseScale = null;
+  let scaleSampleSum = 0;
+  let scaleSampleCount = 0;
+
   const updateStabilizedTransform = () => {
     scene.updateMatrixWorld(true);
 
@@ -384,7 +393,25 @@ async function startAR() {
       pairRoot.position.copy(posA);
       pairRoot.quaternion.copy(quatA);
 
-      const baseScale = scaleA.x * config.planeScale;
+      let baseScale = scaleA.x * config.planeScale;
+
+      if (config.lockScale) {
+        if (lockedBaseScale === null) {
+          scaleSampleSum += baseScale;
+          scaleSampleCount += 1;
+
+          if (scaleSampleCount >= config.scaleLockFrames) {
+            lockedBaseScale = scaleSampleSum / scaleSampleCount;
+          }
+        }
+
+        if (lockedBaseScale !== null) {
+          baseScale = lockedBaseScale;
+        } else if (scaleSampleCount > 0) {
+          baseScale = scaleSampleSum / scaleSampleCount;
+        }
+      }
+
       pairRoot.scale.set(baseScale, baseScale, baseScale);
     }
 
