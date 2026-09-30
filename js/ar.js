@@ -105,25 +105,67 @@ async function startAR() {
   plane.scale.set(config.planeScale, config.planeScale, 1);
   anchor.group.add(plane);
 
-  anchor.onTargetFound = () => {
-    video.currentTime = 0;
-    video.play()
-      .then(() => {
-        video.pause();
-      })
-      .catch((err) => console.warn('preview frame failed:', err));
+  const REQUIRED_BUFFER_SECONDS = 10;
+  let targetVisible = false;
+  let playbackReady = false;
 
+  const hasRequiredBuffer = () => {
+    if (!video.buffered.length) return false;
+
+    const requiredEnd = Number.isFinite(video.duration)
+      ? Math.min(REQUIRED_BUFFER_SECONDS, video.duration)
+      : REQUIRED_BUFFER_SECONDS;
+
+    for (let i = 0; i < video.buffered.length; i += 1) {
+      if (video.buffered.start(i) <= 0.05 && video.buffered.end(i) >= requiredEnd) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const updatePlaybackReady = () => {
+    if (!targetVisible || playbackReady || !hasRequiredBuffer()) return;
+
+    playbackReady = true;
     tapArea.classList.add('active');
     playIcon.classList.add('visible');
   };
 
+  video.addEventListener('progress', updatePlaybackReady);
+  video.addEventListener('loadeddata', updatePlaybackReady);
+  video.addEventListener('canplaythrough', updatePlaybackReady);
+
+  const bufferCheckTimer = window.setInterval(updatePlaybackReady, 250);
+
+  anchor.onTargetFound = () => {
+    targetVisible = true;
+    playbackReady = false;
+    tapArea.classList.remove('active');
+    playIcon.classList.remove('visible');
+
+    video.currentTime = 0;
+    video.play()
+      .then(() => {
+        video.pause();
+        updatePlaybackReady();
+      })
+      .catch((err) => console.warn('preview frame failed:', err));
+
+    updatePlaybackReady();
+  };
+
   anchor.onTargetLost = () => {
+    targetVisible = false;
+    playbackReady = false;
     video.pause();
     tapArea.classList.remove('active');
     playIcon.classList.remove('visible');
   };
 
   tapArea.addEventListener('click', () => {
+    if (!targetVisible || !playbackReady) return;
+
     if (video.paused) {
       video.play().catch((err) => console.warn('video play failed:', err));
       playIcon.classList.remove('visible');
@@ -133,7 +175,16 @@ async function startAR() {
   video.addEventListener('ended', () => {
     video.currentTime = 0;
     video.pause();
-    playIcon.classList.add('visible');
+
+    if (targetVisible && hasRequiredBuffer()) {
+      playbackReady = true;
+      tapArea.classList.add('active');
+      playIcon.classList.add('visible');
+    }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    window.clearInterval(bufferCheckTimer);
   });
 
   await mindarThree.start();
