@@ -52,10 +52,12 @@ async function startAR() {
   const playIcon = document.getElementById('play-icon');
 
   const video = document.createElement('video');
+  video.preload = 'auto';
   video.src = config.videoSrc;
   video.playsInline = true;
   video.crossOrigin = 'anonymous';
   video.setAttribute('webkit-playsinline', '');
+  video.load();
 
   const videoTexture = new THREE.VideoTexture(video);
   videoTexture.colorSpace = THREE.SRGBColorSpace;
