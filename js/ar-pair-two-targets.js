@@ -19,6 +19,8 @@ const config = {
   outlierResetFrames: 3,
   lockScale: false,
   scaleLockFrames: 15,
+  smoothDepth: false,
+  depthSmoothing: 0.08,
   brightness: 1,
   alphaThreshold: 0.5,
   warmupTolerance: 0,
@@ -255,6 +257,7 @@ async function startAR() {
     lockedBaseScale = null;
     scaleSampleSum = 0;
     scaleSampleCount = 0;
+    depthInitialized = false;
     video.pause();
     hideLoading();
     pairRoot.visible = false;
@@ -328,6 +331,9 @@ async function startAR() {
   let scaleSampleSum = 0;
   let scaleSampleCount = 0;
 
+  let smoothedDepth = 0;
+  let depthInitialized = false;
+
   const updateStabilizedTransform = () => {
     scene.updateMatrixWorld(true);
 
@@ -390,7 +396,18 @@ async function startAR() {
       anchorA.group.getWorldScale(scaleA);
       anchorA.group.getWorldQuaternion(quatA);
 
-      pairRoot.position.copy(posA);
+      if (config.smoothDepth) {
+        if (!depthInitialized) {
+          smoothedDepth = posA.z;
+          depthInitialized = true;
+        } else {
+          smoothedDepth = THREE.MathUtils.lerp(smoothedDepth, posA.z, config.depthSmoothing);
+        }
+        pairRoot.position.set(posA.x, posA.y, smoothedDepth);
+      } else {
+        pairRoot.position.copy(posA);
+      }
+
       pairRoot.quaternion.copy(quatA);
 
       let baseScale = scaleA.x * config.planeScale;
