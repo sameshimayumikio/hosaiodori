@@ -123,7 +123,7 @@ async function startAR() {
   plane.scale.set(config.planeScale, config.planeScale, 1);
   anchor.group.add(plane);
 
-  const REQUIRED_BUFFER_SECONDS = 3;
+  const REQUIRED_BUFFER_SECONDS = 4;
   let targetVisible = false;
   let playbackReady = false;
   let videoLoadStarted = false;
