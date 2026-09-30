@@ -26,8 +26,25 @@ video.preload = 'auto';
 video.playsInline = true;
 video.crossOrigin = 'anonymous';
 video.setAttribute('webkit-playsinline', '');
-video.src = config.videoSrc;
-video.load();
+
+const loadingOverlay = document.createElement('div');
+loadingOverlay.textContent = '読み込み中…';
+Object.assign(loadingOverlay.style, {
+  position: 'fixed',
+  left: '50%',
+  top: '50%',
+  transform: 'translate(-50%, -50%)',
+  zIndex: '6',
+  display: 'none',
+  padding: '12px 18px',
+  borderRadius: '999px',
+  background: 'rgba(0, 0, 0, 0.72)',
+  color: '#fff',
+  fontSize: '16px',
+  lineHeight: '1',
+  pointerEvents: 'none'
+});
+document.body.appendChild(loadingOverlay);
 
 const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
@@ -108,6 +125,23 @@ async function startAR() {
   const REQUIRED_BUFFER_SECONDS = 3;
   let targetVisible = false;
   let playbackReady = false;
+  let videoLoadStarted = false;
+  let previewPreparing = false;
+
+  const showLoading = () => {
+    if (targetVisible) loadingOverlay.style.display = 'block';
+  };
+
+  const hideLoading = () => {
+    loadingOverlay.style.display = 'none';
+  };
+
+  const startVideoLoad = () => {
+    if (videoLoadStarted) return;
+    videoLoadStarted = true;
+    video.src = config.videoSrc;
+    video.load();
+  };
 
   const hasRequiredBuffer = () => {
     if (!video.buffered.length) return false;
@@ -124,12 +158,41 @@ async function startAR() {
     return false;
   };
 
-  const updatePlaybackReady = () => {
-    if (!targetVisible || playbackReady || !hasRequiredBuffer()) return;
+  const preparePreview = async () => {
+    if (!targetVisible || playbackReady || previewPreparing || !hasRequiredBuffer()) return;
+
+    previewPreparing = true;
+    video.currentTime = 0;
+
+    const previousMuted = video.muted;
+    video.muted = true;
+
+    try {
+      await video.play();
+      video.pause();
+    } catch (err) {
+      console.warn('preview frame failed:', err);
+    } finally {
+      video.muted = previousMuted;
+      previewPreparing = false;
+    }
+
+    if (!targetVisible) return;
 
     playbackReady = true;
+    hideLoading();
     tapArea.classList.add('active');
     playIcon.classList.add('visible');
+  };
+
+  const updatePlaybackReady = () => {
+    if (!targetVisible || playbackReady) return;
+
+    if (hasRequiredBuffer()) {
+      preparePreview();
+    } else {
+      showLoading();
+    }
   };
 
   video.addEventListener('progress', updatePlaybackReady);
@@ -144,14 +207,8 @@ async function startAR() {
     tapArea.classList.remove('active');
     playIcon.classList.remove('visible');
 
-    video.currentTime = 0;
-    video.play()
-      .then(() => {
-        video.pause();
-        updatePlaybackReady();
-      })
-      .catch((err) => console.warn('preview frame failed:', err));
-
+    showLoading();
+    startVideoLoad();
     updatePlaybackReady();
   };
 
@@ -159,6 +216,7 @@ async function startAR() {
     targetVisible = false;
     playbackReady = false;
     video.pause();
+    hideLoading();
     tapArea.classList.remove('active');
     playIcon.classList.remove('visible');
   };
@@ -176,7 +234,7 @@ async function startAR() {
     video.currentTime = 0;
     video.pause();
 
-    if (targetVisible && hasRequiredBuffer()) {
+    if (targetVisible) {
       playbackReady = true;
       tapArea.classList.add('active');
       playIcon.classList.add('visible');
