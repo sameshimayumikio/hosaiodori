@@ -28,7 +28,7 @@ video.crossOrigin = 'anonymous';
 video.setAttribute('webkit-playsinline', '');
 
 const loadingOverlay = document.createElement('div');
-loadingOverlay.textContent = '読み込み中…';
+loadingOverlay.innerHTML = '認識成功！<br>ちょっと待ってね';
 Object.assign(loadingOverlay.style, {
   position: 'fixed',
   left: '50%',
@@ -41,7 +41,8 @@ Object.assign(loadingOverlay.style, {
   background: 'rgba(0, 0, 0, 0.72)',
   color: '#fff',
   fontSize: '16px',
-  lineHeight: '1',
+  lineHeight: '1.35',
+  textAlign: 'center',
   pointerEvents: 'none'
 });
 document.body.appendChild(loadingOverlay);
