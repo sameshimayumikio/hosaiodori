@@ -10,6 +10,12 @@ const config = {
   planeScale: 1,
   planeOffsetX: 0,
   planeOffsetY: 0,
+  initialPoseCheck: false,
+  initialPoseStableFrames: 10,
+  initialPoseMaxPositionStep: 0.08,
+  initialPoseMaxScaleStepRatio: 0.05,
+  initialPoseMaxRotationStepDeg: 4,
+  initialPoseMaxPairAngleDeg: 15,
   brightness: 1,
   alphaThreshold: 0.5,
   warmupTolerance: 0,
@@ -139,6 +145,16 @@ async function startAR() {
   let videoLoadStarted = false;
   let previewPreparing = false;
 
+  let poseStableCount = 0;
+  let poseHasPrevious = false;
+  const posePrevPos = new THREE.Vector3();
+  const posePrevQuat = new THREE.Quaternion();
+  let posePrevScale = 1;
+  const poseCheckPosA = new THREE.Vector3();
+  const poseCheckScaleA = new THREE.Vector3();
+  const poseCheckQuatA = new THREE.Quaternion();
+  const poseCheckQuatB = new THREE.Quaternion();
+
   const showLoading = () => {
     if (pairActive) loadingOverlay.style.display = 'block';
   };
@@ -213,6 +229,57 @@ async function startAR() {
 
   const bufferCheckTimer = window.setInterval(updatePlaybackReady, 250);
 
+  const resetInitialPoseCheck = () => {
+    poseStableCount = 0;
+    poseHasPrevious = false;
+  };
+
+  const checkInitialPose = () => {
+    if (!config.initialPoseCheck || pairActive || !foundA || !foundB) return;
+
+    scene.updateMatrixWorld(true);
+
+    anchorA.group.getWorldPosition(poseCheckPosA);
+    anchorA.group.getWorldScale(poseCheckScaleA);
+    anchorA.group.getWorldQuaternion(poseCheckQuatA);
+    anchorB.group.getWorldQuaternion(poseCheckQuatB);
+
+    const currentScale = Math.abs(poseCheckScaleA.x);
+    if (!Number.isFinite(currentScale) || currentScale <= 0.0001) {
+      resetInitialPoseCheck();
+      return;
+    }
+
+    const pairAngleDeg = THREE.MathUtils.radToDeg(poseCheckQuatA.angleTo(poseCheckQuatB));
+    let stable = pairAngleDeg <= config.initialPoseMaxPairAngleDeg;
+
+    if (stable && poseHasPrevious) {
+      const positionStep = poseCheckPosA.distanceTo(posePrevPos) / currentScale;
+      const scaleStepRatio = Math.abs(currentScale - posePrevScale) / Math.max(posePrevScale, 0.0001);
+      const rotationStepDeg = THREE.MathUtils.radToDeg(posePrevQuat.angleTo(poseCheckQuatA));
+
+      stable =
+        positionStep <= config.initialPoseMaxPositionStep &&
+        scaleStepRatio <= config.initialPoseMaxScaleStepRatio &&
+        rotationStepDeg <= config.initialPoseMaxRotationStepDeg;
+    }
+
+    if (stable) {
+      poseStableCount += 1;
+    } else {
+      poseStableCount = 0;
+    }
+
+    posePrevPos.copy(poseCheckPosA);
+    posePrevQuat.copy(poseCheckQuatA);
+    posePrevScale = currentScale;
+    poseHasPrevious = true;
+
+    if (poseStableCount >= config.initialPoseStableFrames) {
+      activatePair();
+    }
+  };
+
   const activatePair = () => {
     if (pairActive || !foundA || !foundB) return;
 
@@ -240,8 +307,17 @@ async function startAR() {
   };
 
   const updatePairState = () => {
-    if (foundA && foundB) activatePair();
-    else deactivatePair();
+    if (foundA && foundB) {
+      if (config.initialPoseCheck) {
+        resetInitialPoseCheck();
+        startVideoLoad();
+      } else {
+        activatePair();
+      }
+    } else {
+      resetInitialPoseCheck();
+      deactivatePair();
+    }
   };
 
   anchorA.onTargetFound = () => {
@@ -249,8 +325,13 @@ async function startAR() {
     updatePairState();
   };
 
+  anchorA.onTargetUpdate = () => {
+    checkInitialPose();
+  };
+
   anchorA.onTargetLost = () => {
     foundA = false;
+    resetInitialPoseCheck();
     updatePairState();
   };
 
@@ -261,6 +342,7 @@ async function startAR() {
 
   anchorB.onTargetLost = () => {
     foundB = false;
+    resetInitialPoseCheck();
     updatePairState();
   };
 
