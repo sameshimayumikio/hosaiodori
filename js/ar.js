@@ -8,9 +8,11 @@ const config = {
   planeScale: 1,
   planeOffsetX: 0,
   planeOffsetY: 0,
+  settleBeforeVideoLoadMs: 1000,
+  resetTrackingFilterBeforeLoad: true,
   brightness: 1,
   alphaThreshold: 0.5,
-  warmupTolerance: 0,
+  warmupTolerance: 5,
   missTolerance: 30,
   filterMinCF: 0.00001,
   filterBeta: 0.001,
@@ -128,6 +130,7 @@ async function startAR() {
   let playbackReady = false;
   let videoLoadStarted = false;
   let previewPreparing = false;
+  let settleTimer = null;
 
   const showLoading = () => {
     if (targetVisible) loadingOverlay.style.display = 'block';
@@ -202,6 +205,35 @@ async function startAR() {
 
   const bufferCheckTimer = window.setInterval(updatePlaybackReady, 250);
 
+  const resetTrackingFilter = () => {
+    const trackingState = mindarThree.controller?.trackingStates?.[0];
+    if (trackingState?.filter?.reset) {
+      trackingState.filter.reset();
+    }
+  };
+
+  const beginVideoLoadAfterSettle = () => {
+    const begin = () => {
+      if (!targetVisible) return;
+
+      if (config.resetTrackingFilterBeforeLoad) {
+        resetTrackingFilter();
+      }
+
+      window.requestAnimationFrame(() => {
+        if (!targetVisible) return;
+        startVideoLoad();
+        updatePlaybackReady();
+      });
+    };
+
+    if (config.settleBeforeVideoLoadMs > 0) {
+      settleTimer = window.setTimeout(begin, config.settleBeforeVideoLoadMs);
+    } else {
+      begin();
+    }
+  };
+
   anchor.onTargetFound = () => {
     targetVisible = true;
     playbackReady = false;
@@ -209,13 +241,16 @@ async function startAR() {
     playIcon.classList.remove('visible');
 
     showLoading();
-    startVideoLoad();
-    updatePlaybackReady();
+    beginVideoLoadAfterSettle();
   };
 
   anchor.onTargetLost = () => {
     targetVisible = false;
     playbackReady = false;
+    if (settleTimer !== null) {
+      window.clearTimeout(settleTimer);
+      settleTimer = null;
+    }
     video.pause();
     hideLoading();
     tapArea.classList.remove('active');
@@ -244,6 +279,9 @@ async function startAR() {
 
   window.addEventListener('beforeunload', () => {
     window.clearInterval(bufferCheckTimer);
+    if (settleTimer !== null) {
+      window.clearTimeout(settleTimer);
+    }
   });
 
   await mindarThree.start();
