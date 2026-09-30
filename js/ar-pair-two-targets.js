@@ -23,6 +23,32 @@ if (!config.imageTargetSrc || !config.videoSrc) {
   throw new Error('AR_CONFIG に imageTargetSrc と videoSrc を指定してください。');
 }
 
+const video = document.createElement('video');
+video.preload = 'auto';
+video.playsInline = true;
+video.crossOrigin = 'anonymous';
+video.setAttribute('webkit-playsinline', '');
+
+const loadingOverlay = document.createElement('div');
+loadingOverlay.innerHTML = '認識成功！<br>ちょっと待ってね';
+Object.assign(loadingOverlay.style, {
+  position: 'fixed',
+  left: '50%',
+  top: '50%',
+  transform: 'translate(-50%, -50%)',
+  zIndex: '6',
+  display: 'none',
+  padding: '12px 18px',
+  borderRadius: '999px',
+  background: 'rgba(0, 0, 0, 0.72)',
+  color: '#fff',
+  fontSize: '16px',
+  lineHeight: '1.35',
+  textAlign: 'center',
+  pointerEvents: 'none'
+});
+document.body.appendChild(loadingOverlay);
+
 const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
 
@@ -55,12 +81,6 @@ async function startAR() {
 
   const tapArea = document.getElementById('video-tap-area');
   const playIcon = document.getElementById('play-icon');
-
-  const video = document.createElement('video');
-  video.src = config.videoSrc;
-  video.playsInline = true;
-  video.crossOrigin = 'anonymous';
-  video.setAttribute('webkit-playsinline', '');
 
   const videoTexture = new THREE.VideoTexture(video);
   videoTexture.colorSpace = THREE.SRGBColorSpace;
@@ -111,30 +131,109 @@ async function startAR() {
   pairRoot.add(plane);
   scene.add(pairRoot);
 
+  const REQUIRED_BUFFER_SECONDS = 4;
   let foundA = false;
   let foundB = false;
   let pairActive = false;
+  let playbackReady = false;
+  let videoLoadStarted = false;
+  let previewPreparing = false;
 
-  const activatePair = () => {
-    if (pairActive || !foundA || !foundB) return;
-    pairActive = true;
-    pairRoot.visible = true;
+  const showLoading = () => {
+    if (pairActive) loadingOverlay.style.display = 'block';
+  };
 
+  const hideLoading = () => {
+    loadingOverlay.style.display = 'none';
+  };
+
+  const startVideoLoad = () => {
+    if (videoLoadStarted) return;
+    videoLoadStarted = true;
+    video.src = config.videoSrc;
+    video.load();
+  };
+
+  const hasRequiredBuffer = () => {
+    if (!video.buffered.length) return false;
+
+    const requiredEnd = Number.isFinite(video.duration)
+      ? Math.min(REQUIRED_BUFFER_SECONDS, video.duration)
+      : REQUIRED_BUFFER_SECONDS;
+
+    for (let i = 0; i < video.buffered.length; i += 1) {
+      if (video.buffered.start(i) <= 0.05 && video.buffered.end(i) >= requiredEnd) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const preparePreview = async () => {
+    if (!pairActive || playbackReady || previewPreparing || !hasRequiredBuffer()) return;
+
+    previewPreparing = true;
     video.currentTime = 0;
-    video.play()
-      .then(() => {
-        video.pause();
-      })
-      .catch((err) => console.warn('preview frame failed:', err));
 
+    const previousMuted = video.muted;
+    video.muted = true;
+
+    try {
+      await video.play();
+      video.pause();
+    } catch (err) {
+      console.warn('preview frame failed:', err);
+    } finally {
+      video.muted = previousMuted;
+      previewPreparing = false;
+    }
+
+    if (!pairActive) return;
+
+    playbackReady = true;
+    hideLoading();
+    pairRoot.visible = true;
     tapArea.classList.add('active');
     playIcon.classList.add('visible');
   };
 
+  const updatePlaybackReady = () => {
+    if (!pairActive || playbackReady) return;
+
+    if (hasRequiredBuffer()) {
+      preparePreview();
+    } else {
+      showLoading();
+    }
+  };
+
+  video.addEventListener('progress', updatePlaybackReady);
+  video.addEventListener('loadeddata', updatePlaybackReady);
+  video.addEventListener('canplaythrough', updatePlaybackReady);
+
+  const bufferCheckTimer = window.setInterval(updatePlaybackReady, 250);
+
+  const activatePair = () => {
+    if (pairActive || !foundA || !foundB) return;
+
+    pairActive = true;
+    playbackReady = false;
+    pairRoot.visible = false;
+    tapArea.classList.remove('active');
+    playIcon.classList.remove('visible');
+
+    showLoading();
+    startVideoLoad();
+    updatePlaybackReady();
+  };
+
   const deactivatePair = () => {
     if (!pairActive) return;
+
     pairActive = false;
+    playbackReady = false;
     video.pause();
+    hideLoading();
     pairRoot.visible = false;
     tapArea.classList.remove('active');
     playIcon.classList.remove('visible');
@@ -166,7 +265,8 @@ async function startAR() {
   };
 
   tapArea.addEventListener('click', () => {
-    if (!pairActive) return;
+    if (!pairActive || !playbackReady) return;
+
     if (video.paused) {
       video.play().catch((err) => console.warn('video play failed:', err));
       playIcon.classList.remove('visible');
@@ -176,7 +276,17 @@ async function startAR() {
   video.addEventListener('ended', () => {
     video.currentTime = 0;
     video.pause();
-    if (pairActive) playIcon.classList.add('visible');
+
+    if (pairActive) {
+      playbackReady = true;
+      pairRoot.visible = true;
+      tapArea.classList.add('active');
+      playIcon.classList.add('visible');
+    }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    window.clearInterval(bufferCheckTimer);
   });
 
   // Both targets are required to activate the pair AR,
