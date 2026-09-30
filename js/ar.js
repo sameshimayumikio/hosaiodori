@@ -21,6 +21,14 @@ if (!config.imageTargetSrc || !config.videoSrc) {
   throw new Error('AR_CONFIG に imageTargetSrc と videoSrc を指定してください。');
 }
 
+const video = document.createElement('video');
+video.preload = 'auto';
+video.playsInline = true;
+video.crossOrigin = 'anonymous';
+video.setAttribute('webkit-playsinline', '');
+video.src = config.videoSrc;
+video.load();
+
 const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
 
@@ -50,14 +58,6 @@ async function startAR() {
   const anchor = mindarThree.addAnchor(0);
   const tapArea = document.getElementById('video-tap-area');
   const playIcon = document.getElementById('play-icon');
-
-  const video = document.createElement('video');
-  video.preload = 'auto';
-  video.src = config.videoSrc;
-  video.playsInline = true;
-  video.crossOrigin = 'anonymous';
-  video.setAttribute('webkit-playsinline', '');
-  video.load();
 
   const videoTexture = new THREE.VideoTexture(video);
   videoTexture.colorSpace = THREE.SRGBColorSpace;
@@ -105,7 +105,7 @@ async function startAR() {
   plane.scale.set(config.planeScale, config.planeScale, 1);
   anchor.group.add(plane);
 
-  const REQUIRED_BUFFER_SECONDS = 10;
+  const REQUIRED_BUFFER_SECONDS = 3;
   let targetVisible = false;
   let playbackReady = false;
 
