@@ -10,6 +10,7 @@ const config = {
   planeScale: 1,
   planeOffsetX: 0,
   planeOffsetY: 0,
+  attachToAnchorA: false,
   brightness: 1,
   alphaThreshold: 0.5,
   warmupTolerance: 0,
@@ -129,7 +130,13 @@ async function startAR() {
   const pairRoot = new THREE.Group();
   pairRoot.visible = false;
   pairRoot.add(plane);
-  scene.add(pairRoot);
+
+  if (config.attachToAnchorA) {
+    plane.scale.set(config.planeScale, config.planeScale, 1);
+    anchorA.group.add(pairRoot);
+  } else {
+    scene.add(pairRoot);
+  }
 
   const REQUIRED_BUFFER_SECONDS = 4;
   let foundA = false;
@@ -298,7 +305,7 @@ async function startAR() {
   await mindarThree.start();
 
   renderer.setAnimationLoop(() => {
-    if (pairActive) {
+    if (pairActive && !config.attachToAnchorA) {
       scene.updateMatrixWorld(true);
 
       anchorA.group.getWorldPosition(posA);
