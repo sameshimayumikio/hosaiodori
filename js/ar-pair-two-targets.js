@@ -11,6 +11,12 @@ const config = {
   planeOffsetX: 0,
   planeOffsetY: 0,
   attachToAnchorA: false,
+  stabilizeTracking: false,
+  trackingSmoothing: 0.22,
+  maxPositionJump: 0.18,
+  maxScaleJumpRatio: 0.12,
+  maxRotationJumpDeg: 15,
+  outlierResetFrames: 3,
   brightness: 1,
   alphaThreshold: 0.5,
   warmupTolerance: 0,
@@ -131,8 +137,11 @@ async function startAR() {
   pairRoot.visible = false;
   pairRoot.add(plane);
 
-  if (config.attachToAnchorA) {
+  if (config.attachToAnchorA || config.stabilizeTracking) {
     plane.scale.set(config.planeScale, config.planeScale, 1);
+  }
+
+  if (config.attachToAnchorA) {
     anchorA.group.add(pairRoot);
   } else {
     scene.add(pairRoot);
@@ -239,6 +248,8 @@ async function startAR() {
 
     pairActive = false;
     playbackReady = false;
+    trackingInitialized = false;
+    consecutiveOutliers = 0;
     video.pause();
     hideLoading();
     pairRoot.visible = false;
@@ -302,10 +313,68 @@ async function startAR() {
   const scaleA = new THREE.Vector3();
   const quatA = new THREE.Quaternion();
 
+  const filteredPos = new THREE.Vector3();
+  const filteredQuat = new THREE.Quaternion();
+  let filteredScale = 1;
+  let trackingInitialized = false;
+  let consecutiveOutliers = 0;
+
+  const updateStabilizedTransform = () => {
+    scene.updateMatrixWorld(true);
+
+    anchorA.group.getWorldPosition(posA);
+    anchorA.group.getWorldScale(scaleA);
+    anchorA.group.getWorldQuaternion(quatA);
+
+    const rawScale = scaleA.x;
+
+    if (!trackingInitialized) {
+      filteredPos.copy(posA);
+      filteredQuat.copy(quatA);
+      filteredScale = rawScale;
+      trackingInitialized = true;
+      consecutiveOutliers = 0;
+    } else {
+      const scaleBase = Math.max(Math.abs(filteredScale), 0.0001);
+      const positionJump = posA.distanceTo(filteredPos) / scaleBase;
+      const scaleJumpRatio = Math.abs(rawScale - filteredScale) / scaleBase;
+      const rotationJumpDeg = THREE.MathUtils.radToDeg(filteredQuat.angleTo(quatA));
+
+      const isOutlier =
+        positionJump > config.maxPositionJump ||
+        scaleJumpRatio > config.maxScaleJumpRatio ||
+        rotationJumpDeg > config.maxRotationJumpDeg;
+
+      if (isOutlier) {
+        consecutiveOutliers += 1;
+
+        // A one- or two-frame spike is ignored. If the change persists,
+        // treat it as real camera/marker movement and re-lock to the new pose.
+        if (consecutiveOutliers >= config.outlierResetFrames) {
+          filteredPos.copy(posA);
+          filteredQuat.copy(quatA);
+          filteredScale = rawScale;
+          consecutiveOutliers = 0;
+        }
+      } else {
+        consecutiveOutliers = 0;
+        filteredPos.lerp(posA, config.trackingSmoothing);
+        filteredQuat.slerp(quatA, config.trackingSmoothing);
+        filteredScale = THREE.MathUtils.lerp(filteredScale, rawScale, config.trackingSmoothing);
+      }
+    }
+
+    pairRoot.position.copy(filteredPos);
+    pairRoot.quaternion.copy(filteredQuat);
+    pairRoot.scale.set(filteredScale, filteredScale, filteredScale);
+  };
+
   await mindarThree.start();
 
   renderer.setAnimationLoop(() => {
-    if (pairActive && !config.attachToAnchorA) {
+    if (pairActive && config.stabilizeTracking) {
+      updateStabilizedTransform();
+    } else if (pairActive && !config.attachToAnchorA) {
       scene.updateMatrixWorld(true);
 
       anchorA.group.getWorldPosition(posA);
