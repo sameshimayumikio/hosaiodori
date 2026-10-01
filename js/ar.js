@@ -131,7 +131,6 @@ async function startAR() {
   let videoLoadStarted = false;
   let previewPreparing = false;
   let settleTimer = null;
-  let settleTimer = null;
 
   const showLoading = () => {
     if (targetVisible) loadingOverlay.style.display = 'block';
