@@ -1,5 +1,5 @@
 {
-  "enabled": false,
-  "startAt": null,
-  "endAt": null
+  "enabled": true,
+  "startAt": "2026-10-01T12:00:00+09:00",
+  "endAt": "2026-10-04T18:00:00+09:00"
 }
