@@ -128,6 +128,28 @@ resetTrackingFilterBeforeLoad: true
 
 未配置ページは入口と設定だけ存在し、必要アセット追加後に完成します。
 
+## 販売会場用ペアARデモ
+
+ペア3種には、購入者用URLとは別のデモ専用ページを用意します。  
+デモページは解除コードを使わずにペアARを起動し、共通の `demo-access.json` で利用可否を制御します。
+
+```json
+{
+  "enabled": false,
+  "startAt": null,
+  "endAt": null
+}
+```
+
+- `enabled: false` → 常時停止
+- `enabled: true` かつ日時未指定 → 常時利用可
+- `enabled: true` かつ `startAt` / `endAt` 指定 → 指定時間内のみ利用可
+- 日時は `2026-10-04T09:30:00+09:00` のようなISO 8601形式で指定
+- 停止中は「このARデモは現在利用できません」と表示
+- デモページから購入者用URLへは遷移しない
+
+通常時は `enabled: false` を維持します。
+
 ## ディレクトリ構成
 
 ```

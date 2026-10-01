@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AR Demo 04-05</title>
+
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="icon" href="data:," />
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+        "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <div id="start-overlay">
+    <button id="start-button" disabled>デモ利用可否を確認中…</button>
+  </div>
+
+  <div id="ar-container"></div>
+
+  <div id="video-tap-area">
+    <svg id="play-icon" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="40" cy="40" r="40" fill="#e60012" />
+      <path d="M32 24 L58 40 L32 56 Z" fill="#fff" />
+    </svg>
+  </div>
+
+  <script>
+    window.AR_CONFIG = {
+      imageTargetSrc: '../assets/pair-04-05/pair-04-05_target_crop_800.mind',
+      videoSrc: '../assets/pair-04-05/pair-04-05_dance.mp4',
+      targetIndexA: 0,
+      targetIndexB: 1,
+      planeAspect: 0.7758,
+      planeScale: 4.45,
+      planeOffsetX: 0.06,
+      planeOffsetY: 0.07,
+      brightness: 1
+    };
+  </script>
+  <script type="module" src="../js/demo-pair-gate.js"></script>
+</body>
+</html>
