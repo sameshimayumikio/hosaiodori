@@ -101,7 +101,7 @@
     <div class="intro">
       <h1>ALL ジャイロ追従テスト</h1>
       <p>5番のアクリルスタンドを認識した後、集合動画の5番付近を実物と合わせ、スマホを左右に向けて10人を見渡せるか確認します。床面固定・歩行追跡ではありません。</p>
-      <button id="start-button" disabled>ARプログラムを読み込み中…</button>
+      <button id="start-button" type="button">カメラ・傾きセンサーを起動</button>
       <p>ALLの透過動画を使用します。位置・大きさを画面のボタンで調整できます。既存のALL本番ページは変更していません。</p>
     </div>
   </div>
@@ -133,23 +133,82 @@
     };
   </script>
   <script>
-    // Fail visibly if the test module or its external libraries cannot load.
+    // This listener is classic JavaScript and runs independently of module imports.
+    // It guarantees immediate feedback even if the AR engine cannot be downloaded.
     window.ALL_GYRO_TEST_READY = false;
-    window.addEventListener('DOMContentLoaded', () => {
-      const moduleTag = document.getElementById('all-gyro-module');
-      const button = document.getElementById('start-button');
-      moduleTag.addEventListener('error', () => {
-        button.disabled = true;
-        button.textContent = '読み込みに失敗しました。ページを再読み込みしてください。';
-      });
-      window.setTimeout(() => {
-        if (!window.ALL_GYRO_TEST_READY) {
-          button.disabled = true;
-          button.textContent = 'ARの読み込みが進みません。通信環境を確認して再読み込みしてください。';
+    window.ALL_GYRO_MOTION_PERMISSION = null;
+    const startBtn = document.getElementById('start-button');
+    const startPane = document.getElementById('start-overlay');
+    const messagePane = document.getElementById('test-status');
+    const restartBtn = document.getElementById('test-restart');
+    let clicked = false;
+    let called = false;
+
+    function launchWhenReady() {
+      if (!clicked || called || typeof window.ALL_GYRO_START !== 'function') return;
+      called = true;
+      try {
+        Promise.resolve(window.ALL_GYRO_START()).catch((error) => {
+          messagePane.textContent = 'AR開始エラー：' + (error?.message || String(error));
+          restartBtn.hidden = false;
+        });
+      } catch (error) {
+        messagePane.textContent = 'AR開始エラー：' + (error?.message || String(error));
+        restartBtn.hidden = false;
+      }
+    }
+
+    startBtn.addEventListener('click', () => {
+      if (clicked) return;
+      clicked = true;
+      startBtn.disabled = true;
+      startPane.classList.add('hidden');
+      messagePane.textContent = '起動操作を受け付けました。カメラとARプログラムを準備しています…';
+
+      // iPhone/iPad requires the permission prompt from a direct user gesture.
+      try {
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
+          window.ALL_GYRO_MOTION_PERMISSION = DeviceOrientationEvent.requestPermission();
         }
-      }, 20000);
+      } catch (error) {
+        console.warn('Sensor permission request:', error);
+      }
+      launchWhenReady();
+      if (!called) {
+        messagePane.textContent = 'ARプログラムを読み込んでいます。しばらくお待ちください…';
+      }
     });
+
+    window.addEventListener('ALL_GYRO_READY', launchWhenReady);
+
+    const moduleTag = document.getElementById('all-gyro-module');
+    moduleTag.addEventListener('error', () => {
+      messagePane.textContent = 'ARライブラリの読み込みに失敗しました。通信環境を確認し、ページを再読み込みしてください。';
+      if (clicked) restartBtn.hidden = false;
+    });
+
+    window.addEventListener('error', (event) => {
+      if (!clicked || called) return;
+      messagePane.textContent = 'ARプログラムのエラー：' + (event.message || 'ライブラリを読み込めませんでした');
+      restartBtn.hidden = false;
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      if (!clicked || called) return;
+      const reason = event.reason;
+      messagePane.textContent = 'ARの読み込みエラー：' + (reason?.message || String(reason));
+      restartBtn.hidden = false;
+    });
+
+    restartBtn.addEventListener('click', () => window.location.reload());
+
+    window.setTimeout(() => {
+      if (clicked && !window.ALL_GYRO_TEST_READY) {
+        messagePane.textContent = 'ARプログラムの読み込みが進んでいません。通信環境を確認して再読み込みしてください。';
+        restartBtn.hidden = false;
+      }
+    }, 20000);
   </script>
-  <script id="all-gyro-module" type="module" src="../js/ar-all-gyro-test.js"></script>
+  <script id="all-gyro-module" type="module" src="../js/ar-all-gyro-test.js?v=20261016b"></script>
 </body>
 </html>
