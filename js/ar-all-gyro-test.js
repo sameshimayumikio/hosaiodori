@@ -307,6 +307,8 @@ async function startAR() {
 }
 
 window.ALL_GYRO_TEST_READY = true;
+startButton.disabled = false;
+startButton.textContent = 'カメラ・傾きセンサーを起動';
 
 startButton.addEventListener('click', async () => {
   if (booted) return;
