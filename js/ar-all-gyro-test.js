@@ -310,62 +310,56 @@ window.ALL_GYRO_TEST_READY = true;
 startButton.disabled = false;
 startButton.textContent = 'カメラ・傾きセンサーを起動';
 
-startButton.addEventListener('click', async () => {
+// Called by a plain (non-module) page click listener. This lets the click respond
+// even if a CDN import takes too long or fails before this module can execute.
+async function startTest() {
   if (booted) return;
   booted = true;
-  startButton.disabled = true;
-
-  // Show progress immediately, rather than leaving the opaque splash screen
-  // over the camera until MindAR finishes starting.
   startOverlay.classList.add('hidden');
-  setStatus('カメラを起動しています。許可の確認が出たら「許可」を選んでください。');
+  setStatus('カメラを起動しています。カメラの許可が表示されたら「許可」を選んでください。');
 
-  // Start the camera without awaiting the motion sensor permission.
-  // On some browsers, the sensor permission prompt may remain pending.
-  const cameraStartup = startAR();
-
-  // iOS needs this request to happen during the user's direct tap.
-  try {
-    if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-      Promise.resolve(DeviceOrientationEvent.requestPermission())
-        .then((permission) => {
-          sensorPermissionDenied = permission !== 'granted';
-          if (sensorPermissionDenied) {
-            setStatus('カメラは利用できますが、傾きセンサーが許可されていません。');
-          }
-        })
-        .catch((error) => {
-          sensorPermissionDenied = true;
-          console.warn('Device orientation permission:', error);
-        });
-    }
-  } catch (error) {
-    sensorPermissionDenied = true;
-    console.warn('Device orientation permission:', error);
+  // DeviceOrientation permission is requested synchronously by the page's
+  // direct click handler. Do NOT re-request here after asynchronous imports.
+  const permissionPromise = window.ALL_GYRO_MOTION_PERMISSION;
+  if (permissionPromise) {
+    Promise.resolve(permissionPromise)
+      .then((permission) => {
+        sensorPermissionDenied = permission !== 'granted';
+        if (sensorPermissionDenied) {
+          setStatus('カメラは起動できますが、傾きセンサーの許可がありません。');
+        }
+      })
+      .catch((error) => {
+        sensorPermissionDenied = true;
+        console.warn('Device orientation permission:', error);
+        setStatus('傾きセンサーの許可を取得できませんでした。');
+      });
   }
   window.addEventListener('deviceorientation', onDeviceOrientation, true);
 
   let cameraReady = false;
   const slowStartup = window.setTimeout(() => {
     if (!cameraReady) {
-      setStatus('カメラの起動待ちです。ブラウザのカメラ許可を確認してください。');
+      setStatus('カメラ起動待ちです。ブラウザのカメラ許可と通信状況を確認してください。');
     }
   }, 12000);
 
   try {
-    await cameraStartup;
+    await startAR();
     cameraReady = true;
     setStatus(sensorPermissionDenied
-      ? 'カメラ起動済み。傾きセンサーの利用許可も必要です。'
+      ? 'カメラ起動済み。傾きセンサーへの許可も必要です。'
       : 'カメラ起動済み。5番のアクリルスタンドを映してください。');
   } catch (error) {
-    console.error(error);
-    setStatus('カメラ起動エラー：' + (error?.message || String(error)) +
-      '　「最初から試す」で再読み込みしてください。');
+    console.error('ALL gyro camera startup failure:', error);
+    setStatus('カメラ起動エラー：' + (error?.message || String(error)));
     restartButton.hidden = false;
     booted = false;
   } finally {
     window.clearTimeout(slowStartup);
   }
-});
+}
+
+window.ALL_GYRO_START = startTest;
+window.ALL_GYRO_TEST_READY = true;
+window.dispatchEvent(new Event('ALL_GYRO_READY'));
