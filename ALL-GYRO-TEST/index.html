@@ -182,10 +182,14 @@
 
     window.addEventListener('ALL_GYRO_READY', launchWhenReady);
 
-    const moduleTag = document.getElementById('all-gyro-module');
-    moduleTag.addEventListener('error', () => {
-      messagePane.textContent = 'ARライブラリの読み込みに失敗しました。通信環境を確認し、ページを再読み込みしてください。';
-      if (clicked) restartBtn.hidden = false;
+    window.addEventListener('DOMContentLoaded', () => {
+      const moduleTag = document.getElementById('all-gyro-module');
+      if (moduleTag) {
+        moduleTag.addEventListener('error', () => {
+          messagePane.textContent = 'ARライブラリの読み込みに失敗しました。通信環境を確認し、ページを再読み込みしてください。';
+          if (clicked) restartBtn.hidden = false;
+        });
+      }
     });
 
     window.addEventListener('error', (event) => {
