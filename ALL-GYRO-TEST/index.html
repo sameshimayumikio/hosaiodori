@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ALL ジャイロ追従テスト | ユビキタス伝芸</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="icon" href="data:," />
+  <style>
+    #start-overlay .intro {
+      width: min(88vw, 370px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      color: #fff;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      line-height: 1.6;
+    }
+    .intro h1 { font-size: 21px; margin: 0; }
+    .intro p { margin: 0; font-size: 14px; }
+    #start-button { max-width: 100%; line-height: 1.4; }
+    #test-status {
+      position: fixed;
+      z-index: 7;
+      top: max(14px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      box-sizing: border-box;
+      width: min(94vw, 470px);
+      padding: 12px 15px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, .72);
+      color: #fff;
+      font: 14px/1.5 system-ui, sans-serif;
+      text-align: center;
+      pointer-events: none;
+    }
+    #test-play, #test-restart {
+      position: fixed;
+      z-index: 8;
+      bottom: max(28px, calc(env(safe-area-inset-bottom) + 16px));
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 190px;
+      max-width: 90vw;
+      padding: 15px 22px;
+      border: 0;
+      border-radius: 999px;
+      background: #fff;
+      color: #111;
+      font: bold 17px system-ui, sans-serif;
+      cursor: pointer;
+    }
+    #test-play:disabled { opacity: .4; }
+    #test-play[hidden], #test-restart[hidden] { display: none; }
+    #test-note {
+      position: fixed;
+      z-index: 6;
+      bottom: max(98px, calc(env(safe-area-inset-bottom) + 86px));
+      left: 10px;
+      right: 10px;
+      color: #fff;
+      font: 12px/1.3 system-ui, sans-serif;
+      text-align: center;
+      text-shadow: 0 1px 4px #000;
+      pointer-events: none;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="start-overlay">
+    <div class="intro">
+      <h1>ALL ジャイロ追従テスト</h1>
+      <p>5番のアクリルスタンドを認識した後、スマホを左右に向けて、画面外の人物位置を見渡せるか確認します。床面固定・歩行追跡ではありません。</p>
+      <button id="start-button">カメラ・傾きセンサーを起動</button>
+      <p>5番のみ実写動画。他の1〜4・6〜10番は位置確認用の仮表示です。既存のALL本番ページは変更していません。</p>
+    </div>
+  </div>
+  <div id="ar-container"></div>
+  <div id="test-status" role="status" aria-live="polite">「起動」を押してください。</div>
+  <div id="test-note">テスト用：5番＝実写 ／ その他＝仮配置</div>
+  <button id="test-play" disabled>35秒の踊りを再生</button>
+  <button id="test-restart" hidden>最初から試す</button>
+  <script>
+    window.ALL_GYRO_TEST_CONFIG = {
+      imageTargetSrc: '../assets/05/05_target_800.mind',
+      videoSrc: '../assets/05/05_dance.mp4',
+      planeAspect: 1.4407,
+      planeScale: 1.4,
+      planeOffsetX: 0.15,
+      brightness: 1.2,
+      slotSpacing: 1.55
+    };
+  </script>
+  <script type="module" src="../js/ar-all-gyro-test.js"></script>
+</body>
+</html>
