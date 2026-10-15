@@ -306,18 +306,37 @@ async function startAR() {
   });
 }
 
+window.ALL_GYRO_TEST_READY = true;
+
 startButton.addEventListener('click', async () => {
   if (booted) return;
   booted = true;
   startButton.disabled = true;
-  setStatus('端末のセンサーとカメラを準備しています…');
 
-  // On iOS permission must be requested directly inside the user tap handler.
+  // Show progress immediately, rather than leaving the opaque splash screen
+  // over the camera until MindAR finishes starting.
+  startOverlay.classList.add('hidden');
+  setStatus('カメラを起動しています。許可の確認が出たら「許可」を選んでください。');
+
+  // Start the camera without awaiting the motion sensor permission.
+  // On some browsers, the sensor permission prompt may remain pending.
+  const cameraStartup = startAR();
+
+  // iOS needs this request to happen during the user's direct tap.
   try {
     if (typeof DeviceOrientationEvent !== 'undefined' &&
         typeof DeviceOrientationEvent.requestPermission === 'function') {
-      const permission = await DeviceOrientationEvent.requestPermission();
-      sensorPermissionDenied = permission !== 'granted';
+      Promise.resolve(DeviceOrientationEvent.requestPermission())
+        .then((permission) => {
+          sensorPermissionDenied = permission !== 'granted';
+          if (sensorPermissionDenied) {
+            setStatus('カメラは利用できますが、傾きセンサーが許可されていません。');
+          }
+        })
+        .catch((error) => {
+          sensorPermissionDenied = true;
+          console.warn('Device orientation permission:', error);
+        });
     }
   } catch (error) {
     sensorPermissionDenied = true;
@@ -325,16 +344,24 @@ startButton.addEventListener('click', async () => {
   }
   window.addEventListener('deviceorientation', onDeviceOrientation, true);
 
+  const slowStartup = window.setTimeout(() => {
+    if (booted && !mindarThree?.video?.readyState) {
+      setStatus('カメラの起動待ちです。ブラウザのカメラ許可を確認してください。');
+    }
+  }, 12000);
+
   try {
-    await startAR();
-    startOverlay.classList.add('hidden');
+    await cameraStartup;
     setStatus(sensorPermissionDenied
-      ? '傾きセンサーを使用できません。許可して再読み込みしてください。'
-      : '5番のアクリルスタンドをカメラに映してください。');
+      ? 'カメラ起動済み。傾きセンサーの利用許可も必要です。'
+      : 'カメラ起動済み。5番のアクリルスタンドを映してください。');
   } catch (error) {
     console.error(error);
+    setStatus('カメラ起動エラー：' + (error?.message || String(error)) +
+      '　「最初から試す」で再読み込みしてください。');
+    restartButton.hidden = false;
     booted = false;
-    startButton.disabled = false;
-    setStatus('起動に失敗しました：' + (error?.message || String(error)));
+  } finally {
+    window.clearTimeout(slowStartup);
   }
 });
