@@ -6,12 +6,10 @@ import { MindARThree } from 'mindar-image-three';
 // Existing production runtimes are intentionally untouched.
 const config = {
   imageTargetSrc: '../assets/05/05_target_800.mind',
-  videoSrc: '../assets/05/05_dance.mp4',
-  planeAspect: 1.4407,
-  planeScale: 1.4,
-  planeOffsetX: 0.15,
+  videoSrc: '../assets/all/all_dance.mp4',
+  personHeight: 2.0, // prototype AR units; calibrate on-screen
+  fifthPersonFraction: 0.45, // estimated horizontal midpoint of dancer 5 within RGB half
   brightness: 1.2,
-  slotSpacing: 1.55,
   settleMs: 1000,
   bufferSeconds: 4,
   ...(window.ALL_GYRO_TEST_CONFIG || {}),
@@ -22,6 +20,9 @@ const startButton = document.getElementById('start-button');
 const status = document.getElementById('test-status');
 const playButton = document.getElementById('test-play');
 const restartButton = document.getElementById('test-restart');
+const calibrator = document.getElementById('test-calibration');
+const sizeLabel = document.getElementById('test-size');
+const shiftLabel = document.getElementById('test-shift');
 
 const video = document.createElement('video');
 video.crossOrigin = 'anonymous';
@@ -51,6 +52,37 @@ let ready = false;
 let settleTimer = null;
 let layout = null;
 let mindarThree = null;
+let videoPlane = null;
+let personHeight = config.personHeight;
+let horizontalShift = 0;
+
+function updateVideoLayout() {
+  if (!videoPlane || !video.videoWidth || !video.videoHeight) return;
+  // The RGB image occupies the LEFT HALF of our side-by-side RGB+Alpha MP4.
+  const aspect = (video.videoWidth / 2) / video.videoHeight;
+  const width = personHeight * aspect;
+  videoPlane.scale.set(width, personHeight, 1);
+  // Make dancer 5 (estimated 45% from left) line up with the image marker.
+  videoPlane.position.set((0.5 - config.fifthPersonFraction) * width + horizontalShift, 0, 0.002);
+  sizeLabel.textContent = '大きさ ' + (personHeight / config.personHeight).toFixed(2) + '×';
+  shiftLabel.textContent = '横位置 ' + horizontalShift.toFixed(2);
+}
+document.getElementById('test-smaller').addEventListener('click', () => {
+  personHeight = Math.max(0.4, personHeight * 0.9);
+  updateVideoLayout();
+});
+document.getElementById('test-larger').addEventListener('click', () => {
+  personHeight = Math.min(8, personHeight * 1.1);
+  updateVideoLayout();
+});
+document.getElementById('test-left').addEventListener('click', () => {
+  horizontalShift -= 0.15;
+  updateVideoLayout();
+});
+document.getElementById('test-right').addEventListener('click', () => {
+  horizontalShift += 0.15;
+  updateVideoLayout();
+});
 
 function setStatus(message) {
   status.textContent = message;
@@ -75,37 +107,6 @@ function onDeviceOrientation(event) {
   if (frozen || !found || !ready) return;
   playButton.disabled = false;
   setStatus('5番の位置を確認して再生。再生後は左右にスマホを向けてください。');
-}
-
-function makeGuide(index) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 360;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = 'rgba(13, 26, 40, 0.70)';
-  ctx.fillRect(4, 4, 248, 352);
-  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-  ctx.lineWidth = 5;
-  ctx.strokeRect(9, 9, 238, 342);
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 130px sans-serif';
-  ctx.fillText(String(index), 128, 194);
-  ctx.font = '27px sans-serif';
-  ctx.fillText('仮配置', 128, 265);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  const geometry = new THREE.PlaneGeometry(1, config.planeAspect);
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.scale.set(config.planeScale, config.planeScale, 1);
-  mesh.position.set((index - 5) * config.slotSpacing + config.planeOffsetX, 0, 0);
-  return mesh;
 }
 
 function makeVideoPlane() {
@@ -143,9 +144,9 @@ function makeVideoPlane() {
     transparent: true,
     side: THREE.DoubleSide,
   });
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, config.planeAspect), material);
-  plane.scale.set(config.planeScale, config.planeScale, 1);
-  plane.position.set(config.planeOffsetX, 0, 0.002);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+  videoPlane = plane;
+  updateVideoLayout();
   return plane;
 }
 
@@ -161,7 +162,7 @@ function hasBuffer() {
 }
 
 async function preparePreview() {
-  if (!found || frozen || ready || preparing || !hasBuffer()) return;
+  if (!found || frozen || ready || preparing || !video.videoWidth || !hasBuffer()) return;
   preparing = true;
   const wasMuted = video.muted;
   video.muted = true;
@@ -179,6 +180,7 @@ async function preparePreview() {
 
   if (!found || frozen) return;
   ready = true;
+  calibrator.hidden = false;
   if (sensorAvailable) {
     playButton.disabled = false;
     setStatus('準備完了。5番の位置を確認して「再生」を押してください。');
@@ -223,9 +225,6 @@ async function startAR() {
 
   layout = new THREE.Group();
   anchor.group.add(layout);
-  for (let n = 1; n <= 10; n++) {
-    if (n !== 5) layout.add(makeGuide(n));
-  }
   layout.add(makeVideoPlane());
 
   const startLoad = () => {
@@ -234,7 +233,7 @@ async function startAR() {
     loadingStarted = true;
     video.src = config.videoSrc;
     video.load();
-    setStatus('5番を認識しました。動画を読み込んでいます…');
+    setStatus('5番を認識しました。ALL集合動画を読み込んでいます…');
     updateBuffer();
   };
 
@@ -242,6 +241,7 @@ async function startAR() {
     if (frozen) return;
     found = true;
     if (ready) {
+      calibrator.hidden = false;
       setStatus(sensorAvailable
         ? '準備完了。「再生」を押すとマーカーから切り離します。'
         : '傾きセンサーの応答を待っています。');
@@ -258,6 +258,7 @@ async function startAR() {
     if (frozen) return;
     found = false;
     playButton.disabled = true;
+    calibrator.hidden = true;
     if (settleTimer != null) {
       window.clearTimeout(settleTimer);
       settleTimer = null;
@@ -265,6 +266,7 @@ async function startAR() {
     setStatus('5番のアクリルスタンドをもう一度映してください。');
   };
 
+  video.addEventListener('loadedmetadata', updateVideoLayout);
   video.addEventListener('progress', updateBuffer);
   video.addEventListener('loadeddata', updateBuffer);
   video.addEventListener('canplay', updateBuffer);
