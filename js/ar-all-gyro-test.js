@@ -23,6 +23,7 @@ const restartButton = document.getElementById('test-restart');
 const calibrator = document.getElementById('test-calibration');
 const sizeLabel = document.getElementById('test-size');
 const shiftLabel = document.getElementById('test-shift');
+restartButton.addEventListener('click', () => window.location.reload());
 
 const video = document.createElement('video');
 video.crossOrigin = 'anonymous';
@@ -291,7 +292,6 @@ async function startAR() {
     setStatus('35秒の再生が終了しました。「最初から試す」で再認識できます。');
   });
 
-  restartButton.addEventListener('click', () => window.location.reload());
 
   await mindarThree.start();
   renderer.setAnimationLoop(() => {
@@ -346,14 +346,16 @@ startButton.addEventListener('click', async () => {
   }
   window.addEventListener('deviceorientation', onDeviceOrientation, true);
 
+  let cameraReady = false;
   const slowStartup = window.setTimeout(() => {
-    if (booted && !mindarThree?.video?.readyState) {
+    if (!cameraReady) {
       setStatus('カメラの起動待ちです。ブラウザのカメラ許可を確認してください。');
     }
   }, 12000);
 
   try {
     await cameraStartup;
+    cameraReady = true;
     setStatus(sensorPermissionDenied
       ? 'カメラ起動済み。傾きセンサーの利用許可も必要です。'
       : 'カメラ起動済み。5番のアクリルスタンドを映してください。');
