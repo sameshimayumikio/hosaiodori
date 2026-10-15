@@ -133,8 +133,7 @@
     };
   </script>
   <script>
-    // This listener is classic JavaScript and runs independently of module imports.
-    // It guarantees immediate feedback even if the AR engine cannot be downloaded.
+    // Plain browser script: diagnostics and click work even if ESM dependencies fail.
     window.ALL_GYRO_TEST_READY = false;
     window.ALL_GYRO_MOTION_PERMISSION = null;
     const startBtn = document.getElementById('start-button');
@@ -142,30 +141,45 @@
     const messagePane = document.getElementById('test-status');
     const restartBtn = document.getElementById('test-restart');
     let clicked = false;
-    let called = false;
+    let launched = false;
+    let loadFailure = null;
 
-    function launchWhenReady() {
-      if (!clicked || called || typeof window.ALL_GYRO_START !== 'function') return;
-      called = true;
-      try {
-        Promise.resolve(window.ALL_GYRO_START()).catch((error) => {
-          messagePane.textContent = 'AR開始エラー：' + (error?.message || String(error));
-          restartBtn.hidden = false;
-        });
-      } catch (error) {
-        messagePane.textContent = 'AR開始エラー：' + (error?.message || String(error));
-        restartBtn.hidden = false;
+    restartBtn.addEventListener('click', () => window.location.reload());
+
+    function showLoadError(error) {
+      loadFailure = error;
+      const detail = error && (error.stack || error.message) || String(error);
+      console.error('ALL gyro module load:', error);
+      messagePane.textContent = 'AR読み込みエラー：' + detail;
+      restartBtn.hidden = false;
+      if (!clicked) {
+        startBtn.textContent = '読み込みエラー（タップして内容を確認）';
       }
     }
+
+    function launchWhenReady() {
+      if (!clicked || launched || loadFailure || typeof window.ALL_GYRO_START !== 'function') return;
+      launched = true;
+      try {
+        Promise.resolve(window.ALL_GYRO_START()).catch(showLoadError);
+      } catch (error) {
+        showLoadError(error);
+      }
+    }
+    window.addEventListener('ALL_GYRO_READY', launchWhenReady);
+
+    window.addEventListener('error', event => {
+      if (!window.ALL_GYRO_TEST_READY && !loadFailure) {
+        showLoadError(new Error((event.message || 'スクリプトエラー') + ' (' + (event.filename || '') + ':' + (event.lineno || '') + ')'));
+      }
+    });
 
     startBtn.addEventListener('click', () => {
       if (clicked) return;
       clicked = true;
-      startBtn.disabled = true;
       startPane.classList.add('hidden');
-      messagePane.textContent = '起動操作を受け付けました。カメラとARプログラムを準備しています…';
+      messagePane.textContent = '起動操作を受け付けました。ARエンジンを読み込んでいます…';
 
-      // iPhone/iPad requires the permission prompt from a direct user gesture.
       try {
         if (typeof DeviceOrientationEvent !== 'undefined' &&
             typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -174,45 +188,28 @@
       } catch (error) {
         console.warn('Sensor permission request:', error);
       }
-      launchWhenReady();
-      if (!called) {
-        messagePane.textContent = 'ARプログラムを読み込んでいます。しばらくお待ちください…';
-      }
+      if (loadFailure) showLoadError(loadFailure);
+      else launchWhenReady();
     });
 
-    window.addEventListener('ALL_GYRO_READY', launchWhenReady);
-
-    window.addEventListener('DOMContentLoaded', () => {
-      const moduleTag = document.getElementById('all-gyro-module');
-      if (moduleTag) {
-        moduleTag.addEventListener('error', () => {
-          messagePane.textContent = 'ARライブラリの読み込みに失敗しました。通信環境を確認し、ページを再読み込みしてください。';
-          if (clicked) restartBtn.hidden = false;
-        });
-      }
-    });
-
-    window.addEventListener('error', (event) => {
-      if (!clicked || called) return;
-      messagePane.textContent = 'ARプログラムのエラー：' + (event.message || 'ライブラリを読み込めませんでした');
-      restartBtn.hidden = false;
-    });
-    window.addEventListener('unhandledrejection', (event) => {
-      if (!clicked || called) return;
-      const reason = event.reason;
-      messagePane.textContent = 'ARの読み込みエラー：' + (reason?.message || String(reason));
-      restartBtn.hidden = false;
-    });
-
-    restartBtn.addEventListener('click', () => window.location.reload());
+    // Explicit import allows us to report the actual rejection instead of
+    // silently waiting for a module script that never calls its entrypoint.
+    const moduleUrl = new URL('../js/ar-all-gyro-test.js?v=20261016c', document.baseURI).href;
+    import(moduleUrl)
+      .then(() => {
+        if (!window.ALL_GYRO_TEST_READY) {
+          showLoadError(new Error('JS読み込み後の初期化に到達しませんでした'));
+        } else {
+          launchWhenReady();
+        }
+      })
+      .catch(showLoadError);
 
     window.setTimeout(() => {
-      if (clicked && !window.ALL_GYRO_TEST_READY) {
-        messagePane.textContent = 'ARプログラムの読み込みが進んでいません。通信環境を確認して再読み込みしてください。';
-        restartBtn.hidden = false;
+      if (clicked && !window.ALL_GYRO_TEST_READY && !loadFailure) {
+        messagePane.textContent = 'ARライブラリの応答を待っています。通信が遅い可能性があります（20秒以上）。';
       }
     }, 20000);
   </script>
-  <script id="all-gyro-module" type="module" src="../js/ar-all-gyro-test.js?v=20261016b"></script>
 </body>
 </html>
