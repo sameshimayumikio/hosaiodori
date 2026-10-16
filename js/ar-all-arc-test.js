@@ -205,7 +205,7 @@ async function preparePreview() {
   } else {
     setStatus(sensorPermissionDenied
       ? '傾きセンサーの許可がありません。ブラウザの設定を確認して再読み込みしてください。'
-      : '動画準備完了。傾きセンサーからの応答を待っています。');
+      : '傾きセンサーからの応答を待っています。');
   }
 }
 
