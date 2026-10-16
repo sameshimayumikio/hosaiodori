@@ -436,7 +436,7 @@ async function startAR() {
       window.clearTimeout(settleTimer);
       settleTimer = null;
     }
-    setStatus('5番子抱嫁のアクリルスタンドをもう一度映してください。');
+    setStatus('5番 子抱嫁のアクリルスタンドをもう一度映してください。');
   };
 
   video.addEventListener('loadedmetadata', updateVideoLayout);
@@ -534,7 +534,7 @@ async function startTest() {
     cameraReady = true;
     setStatus(sensorPermissionDenied
       ? 'カメラ起動済み。傾きセンサーへの許可も必要です。'
-      : '5番子抱嫁のアクリルスタンドを映してください。');
+      : '5番 子抱嫁のアクリルスタンドを映してください。');
   } catch (error) {
     console.error('ALL arc camera startup failure:', error);
     setStatus('カメラ起動エラー：' + (error?.message || String(error)));
