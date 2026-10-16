@@ -18,7 +18,6 @@
       font-family: system-ui, sans-serif;
       line-height: 1.6;
     }
-    .intro h1 { font-size: 21px; margin: 0; }
     .intro p { margin: 0; font-size: 14px; }
     #start-button { max-width: 100%; line-height: 1.4; }
     #test-status {
@@ -53,6 +52,7 @@
       font: bold 17px system-ui, sans-serif;
       cursor: pointer;
     }
+    #test-status[hidden] { display: none; }
     #test-play:disabled { opacity: .4; }
     #test-play[hidden], #test-restart[hidden] { display: none; }
     /* Portrait: turn all visitor-facing text and buttons 90 degrees.
@@ -67,7 +67,6 @@
         transform: rotate(90deg);
       }
       #start-overlay .intro p { font-size: 13px; }
-      #start-overlay .intro h1 { font-size: 20px; }
       #start-button { padding: 13px 26px; }
       #test-status {
         top: 50%;
@@ -98,16 +97,15 @@
 <body>
   <div id="start-overlay">
     <div class="intro">
-      <h1>野行の宝財踊り</h1>
-      <p>スマホを横向きにして、5番のアクリルスタンドをカメラに映してください。</p>
-      <button id="start-button" type="button">ARを始める</button>
-      <p>カメラと傾きセンサーへのアクセスを許可してください。</p>
+      <p>スマホを横向きにしてご覧ください。</p>
+      <button id="start-button" type="button">タップして、アクリルスタンドをスキャンしよう</button>
+      <p>カメラと傾きセンサーの使用を許可してください。</p>
     </div>
   </div>
   <div id="ar-container"></div>
-  <div id="test-status" role="status" aria-live="polite">「起動」を押してください。</div>
-  <button id="test-play" disabled>35秒の踊りを再生</button>
-  <button id="test-restart" hidden>最初から試す</button>
+  <div id="test-status" role="status" aria-live="polite" hidden></div>
+  <button id="test-play" disabled>▶ 再生</button>
+  <button id="test-restart" hidden>もう一度見る</button>
   <script>
     window.ALL_ARC_TEST_CONFIG = {
       imageTargetSrc: '../assets/05/05_target_800.mind',
