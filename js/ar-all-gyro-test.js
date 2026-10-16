@@ -7,8 +7,10 @@ import { MindARThree } from 'mindar-image-three';
 const config = {
   imageTargetSrc: '../assets/05/05_target_800.mind',
   videoSrc: '../assets/all/all_dance.mp4',
-  personHeight: 2.0, // prototype AR units; calibrate on-screen
-  fifthPersonFraction: 0.45, // estimated horizontal midpoint of dancer 5 within RGB half
+  planeScale: 2.0, // displayed video height, in AR marker units
+  planeOffsetX: 0, // horizontal shift relative to dancer 5 alignment
+  planeOffsetY: 0, // vertical shift relative to the marker
+  fifthPersonFraction: 0.45, // estimated horizontal position of dancer 5 within RGB half
   brightness: 1.2,
   settleMs: 1000,
   bufferSeconds: 4,
@@ -20,9 +22,6 @@ const startButton = document.getElementById('start-button');
 const status = document.getElementById('test-status');
 const playButton = document.getElementById('test-play');
 const restartButton = document.getElementById('test-restart');
-const calibrator = document.getElementById('test-calibration');
-const sizeLabel = document.getElementById('test-size');
-const shiftLabel = document.getElementById('test-shift');
 restartButton.addEventListener('click', () => window.location.reload());
 
 const video = document.createElement('video');
@@ -54,36 +53,22 @@ let settleTimer = null;
 let layout = null;
 let mindarThree = null;
 let videoPlane = null;
-let personHeight = config.personHeight;
-let horizontalShift = 0;
 
 function updateVideoLayout() {
   if (!videoPlane || !video.videoWidth || !video.videoHeight) return;
-  // The RGB image occupies the LEFT HALF of our side-by-side RGB+Alpha MP4.
+  // The left half of the MP4 contains the RGB image; right half is alpha.
+  // Match its actual aspect ratio while keeping scale and position in index.html.
   const aspect = (video.videoWidth / 2) / video.videoHeight;
-  const width = personHeight * aspect;
-  videoPlane.scale.set(width, personHeight, 1);
-  // Make dancer 5 (estimated 45% from left) line up with the image marker.
-  videoPlane.position.set((0.5 - config.fifthPersonFraction) * width + horizontalShift, 0, 0.002);
-  sizeLabel.textContent = '大きさ ' + (personHeight / config.personHeight).toFixed(2) + '×';
-  shiftLabel.textContent = '横位置 ' + horizontalShift.toFixed(2);
+  const width = config.planeScale * aspect;
+  videoPlane.scale.set(width, config.planeScale, 1);
+  // Align dancer 5's estimated midpoint with the recognized acrylic stand,
+  // then apply the explicit offsets from the test page's index.html.
+  videoPlane.position.set(
+    (0.5 - config.fifthPersonFraction) * width + config.planeOffsetX,
+    config.planeOffsetY,
+    0.002
+  );
 }
-document.getElementById('test-smaller').addEventListener('click', () => {
-  personHeight = Math.max(0.4, personHeight * 0.9);
-  updateVideoLayout();
-});
-document.getElementById('test-larger').addEventListener('click', () => {
-  personHeight = Math.min(8, personHeight * 1.1);
-  updateVideoLayout();
-});
-document.getElementById('test-left').addEventListener('click', () => {
-  horizontalShift -= 0.15;
-  updateVideoLayout();
-});
-document.getElementById('test-right').addEventListener('click', () => {
-  horizontalShift += 0.15;
-  updateVideoLayout();
-});
 
 function setStatus(message) {
   status.textContent = message;
@@ -181,7 +166,6 @@ async function preparePreview() {
 
   if (!found || frozen) return;
   ready = true;
-  calibrator.hidden = false;
   if (sensorAvailable) {
     playButton.disabled = false;
     setStatus('準備完了。5番の位置を確認して「再生」を押してください。');
@@ -243,7 +227,6 @@ async function startAR() {
     if (frozen) return;
     found = true;
     if (ready) {
-      calibrator.hidden = false;
       setStatus(sensorAvailable
         ? '準備完了。「再生」を押すとマーカーから切り離します。'
         : '傾きセンサーの応答を待っています。');
@@ -260,7 +243,6 @@ async function startAR() {
     if (frozen) return;
     found = false;
     playButton.disabled = true;
-    calibrator.hidden = true;
     if (settleTimer != null) {
       window.clearTimeout(settleTimer);
       settleTimer = null;
