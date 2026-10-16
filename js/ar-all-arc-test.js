@@ -25,6 +25,7 @@ const status = document.getElementById('test-status');
 const tapArea = document.getElementById('video-tap-area');
 const playIcon = document.getElementById('play-icon');
 const zoomHint = document.getElementById('zoom-hint');
+const lookHint = document.getElementById('look-hint');
 
 const video = document.createElement('video');
 video.crossOrigin = 'anonymous';
@@ -68,6 +69,25 @@ let lastTap = null;
 let suppressPlayClickUntil = 0;
 let zoomHintShown = false;
 let zoomHintTimeout = null;
+let lookHintTimeout = null;
+
+function hideLookHint() {
+  lookHint.hidden = true;
+  if (lookHintTimeout !== null) {
+    window.clearTimeout(lookHintTimeout);
+    lookHintTimeout = null;
+  }
+}
+
+function showLookHint() {
+  hideLookHint();
+  lookHint.hidden = false;
+  // Short instruction on each playback; hide it to give the dancers room.
+  lookHintTimeout = window.setTimeout(() => {
+    lookHint.hidden = true;
+    lookHintTimeout = null;
+  }, 8000);
+}
 
 function showZoomHintOnce() {
   if (zoomHintShown) return;
@@ -114,6 +134,7 @@ document.addEventListener('touchstart', (event) => {
   if (event.touches.length === 2) {
     pinchGesture = true;
     dismissZoomHint();
+    hideLookHint();
     pinchStartDistance = touchDistance(event.touches);
     pinchStartZoom = zoomFactor;
     lastTap = null;
@@ -167,6 +188,7 @@ document.addEventListener('touchend', (event) => {
     suppressPlayClickUntil = now + 450;
     setZoom(1);
     dismissZoomHint();
+    hideLookHint();
     if (lastTap.wasPaused && !video.paused) {
       // A first tap on a visible play overlay may already have restarted
       // playback. Return to the previous ready/paused state on double-tap.
@@ -197,6 +219,7 @@ document.addEventListener('dblclick', (event) => {
   event.preventDefault();
   setZoom(1);
   dismissZoomHint();
+  hideLookHint();
 }, { passive: false });
 
 function updateVideoLayout() {
@@ -460,11 +483,13 @@ async function startAR() {
     }
 
     hidePlayButton();
-    setStatus('スマホを左右に向けると、全員の踊りが見られるよ');
+    setStatus('');
+    showLookHint();
     video.muted = false;
     video.currentTime = 0;
     video.play().catch((error) => {
       console.error('Video play failed:', error);
+      hideLookHint();
       setStatus('動画を再生できませんでした。もう一度タップしてください。');
       showPlayButton();
     });
@@ -474,6 +499,7 @@ async function startAR() {
     if (!frozen) return;
     video.pause();
     video.currentTime = 0;
+    hideLookHint();
     setStatus('');
     showPlayButton();
   });
