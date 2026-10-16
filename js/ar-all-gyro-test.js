@@ -214,6 +214,7 @@ async function startAR() {
   mindarThree = new MindARThree({
     container: document.getElementById('ar-container'),
     imageTargetSrc: config.imageTargetSrc,
+    uiScanning: 'no',
     warmupTolerance: 5,
     missTolerance: 30,
     filterMinCF: 0.00001,
