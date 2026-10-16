@@ -20,6 +20,62 @@
     }
     .intro h1 { font-size: 21px; margin: 0; }
     .intro p { margin: 0; font-size: 14px; }
+    .landscape-guide {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, .11);
+      border: 1px solid rgba(255, 255, 255, .27);
+      border-radius: 14px;
+    }
+    .landscape-guide strong { font-size: 18px; }
+    .landscape-guide small { font-size: 12px; color: rgba(255, 255, 255, .85); }
+    .landscape-phone {
+      width: 43px;
+      height: 26px;
+      border: 3px solid #fff;
+      border-radius: 7px;
+      box-sizing: border-box;
+      position: relative;
+      margin: 5px 0;
+    }
+    .landscape-phone::after {
+      content: '';
+      position: absolute;
+      right: 2px;
+      top: 50%;
+      width: 3px;
+      height: 7px;
+      border-radius: 3px;
+      background: #fff;
+      transform: translateY(-50%);
+    }
+    #orientation-reminder {
+      display: none;
+      position: fixed;
+      top: max(110px, calc(env(safe-area-inset-top) + 98px));
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: 82vw;
+      padding: 9px 13px;
+      box-sizing: border-box;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, .78);
+      color: #fff;
+      font: bold 14px/1.5 system-ui, sans-serif;
+      text-align: center;
+      z-index: 6;
+      pointer-events: none;
+    }
+    @media (orientation: landscape) {
+      .landscape-guide { display: none; }
+    }
+    @media (orientation: portrait) and (pointer: coarse) {
+      body.ar-started #orientation-reminder { display: block; }
+    }
     #start-button { max-width: 100%; line-height: 1.4; }
     #test-status {
       position: fixed;
@@ -81,15 +137,22 @@
 <body>
   <div id="start-overlay">
     <div class="intro">
-      <h1>ALL 円弧面テスト</h1>
-      <p>5番を起点に、ALL集合動画を緩やかな円弧面へ配置します。左右へ向けたときの端の人物の見え方を確認してください。床面固定・歩行追跡ではありません。</p>
-      <button id="start-button" type="button">カメラ・傾きセンサーを起動</button>
-      <p>ALL透過動画を使い、サイズ・位置・円弧角度はこのindex.htmlの数値で調整します。平面版とALL本番は変更していません。</p>
+      <h1>野行の宝財踊り</h1>
+      <div class="landscape-guide" role="note">
+        <span class="landscape-phone" aria-hidden="true"></span>
+        <strong>スマホを横向きにしてください</strong>
+        <small>横向きにしてから始めると、10人の踊りを見渡しやすくなります。</small>
+        <small>画面が回転しない場合は、回転ロックを解除してください。</small>
+      </div>
+      <p>5番のアクリルスタンドをカメラに映してください。</p>
+      <button id="start-button" type="button">ARを始める</button>
+      <p>カメラと傾きセンサーへのアクセスを許可してください。</p>
     </div>
   </div>
   <div id="ar-container"></div>
   <div id="test-status" role="status" aria-live="polite">「起動」を押してください。</div>
-  <div id="test-note">5番を起点に円弧配置（ジャイロ追従）</div>
+  <div id="test-note">5番のアクリルスタンドにカメラを向けてください</div>
+  <div id="orientation-reminder" role="note">スマホを横向きにしてください</div>
   <button id="test-play" disabled>35秒の踊りを再生</button>
   <button id="test-restart" hidden>最初から試す</button>
   <script>
@@ -151,6 +214,7 @@
       if (clicked) return;
       clicked = true;
       startPane.classList.add('hidden');
+      document.body.classList.add('ar-started');
       messagePane.textContent = '起動操作を受け付けました。ARエンジンを読み込んでいます…';
 
       try {
