@@ -330,7 +330,7 @@ async function startAR() {
 
 window.ALL_ARC_TEST_READY = true;
 startButton.disabled = false;
-startButton.textContent = 'カメラ・傾きセンサーを起動';
+startButton.textContent = 'ARを始める';
 
 // Called by a plain (non-module) page click listener. This lets the click respond
 // even if a CDN import takes too long or fails before this module can execute.
