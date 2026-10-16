@@ -37,6 +37,60 @@
       pointer-events: none;
     }
     #test-status[hidden] { display: none; }
+    /* Small animated gesture hint, separate from AR and playback touch targets. */
+    #zoom-hint {
+      position: fixed;
+      z-index: 7;
+      right: max(16px, env(safe-area-inset-right));
+      bottom: max(16px, env(safe-area-inset-bottom));
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 13px;
+      border-radius: 15px;
+      background: rgba(0, 0, 0, .74);
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      line-height: 1.35;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    #zoom-hint[hidden] { display: none; }
+    #zoom-hint .gesture-drawing {
+      width: 72px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    #zoom-hint .gesture-finger {
+      width: 13px;
+      height: 24px;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.3);
+    }
+    #zoom-hint .gesture-finger:first-child {
+      animation: pinch-left 2s ease-in-out infinite;
+    }
+    #zoom-hint .gesture-finger:last-child {
+      animation: pinch-right 2s ease-in-out infinite;
+    }
+    #zoom-hint .gesture-arrow { font-size: 23px; font-weight: 600; opacity: .9; }
+    #zoom-hint .gesture-title { font-size: 14px; font-weight: 700; }
+    #zoom-hint .gesture-sub { font-size: 11px; opacity: .85; }
+    @keyframes pinch-left {
+      0%, 100% { transform: translateX(10px); }
+      50% { transform: translateX(-2px); }
+    }
+    @keyframes pinch-right {
+      0%, 100% { transform: translateX(-10px); }
+      50% { transform: translateX(2px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #zoom-hint .gesture-finger { animation: none; }
+    }
     /* Keep two-finger gestures on the AR surface instead of browser page zoom. */
     #ar-container, #video-tap-area { touch-action: none; }
     /* Portrait: turn all visitor-facing text and buttons 90 degrees.
@@ -62,6 +116,13 @@
       #play-icon {
         transform: translate(-50%, -50%) rotate(90deg);
       }
+      #zoom-hint {
+        top: 50%;
+        left: 42px;
+        right: auto;
+        bottom: auto;
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
     }
   </style>
   <script type="importmap">
@@ -84,6 +145,17 @@
   </div>
   <div id="ar-container"></div>
   <div id="test-status" role="status" aria-live="polite" hidden></div>
+  <div id="zoom-hint" aria-label="2本指で拡大・縮小。ダブルタップで元に戻す。" hidden>
+    <div class="gesture-drawing" aria-hidden="true">
+      <span class="gesture-finger"></span>
+      <span class="gesture-arrow">↔</span>
+      <span class="gesture-finger"></span>
+    </div>
+    <div>
+      <div class="gesture-title">2本指で拡大・縮小</div>
+      <div class="gesture-sub">ダブルタップで元に戻す</div>
+    </div>
+  </div>
   <div id="video-tap-area">
     <svg id="play-icon" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
       <circle cx="40" cy="40" r="40" fill="#e60012" />
@@ -168,7 +240,7 @@
 
     // Explicit import allows us to report the actual rejection instead of
     // silently waiting for a module script that never calls its entrypoint.
-    const moduleUrl = new URL('../js/ar-all-arc-test.js?v=20261017arc5', document.baseURI).href;
+    const moduleUrl = new URL('../js/ar-all-arc-test.js?v=20261017arc6', document.baseURI).href;
     import(moduleUrl)
       .then(() => {
         if (!window.ALL_ARC_TEST_READY) {
