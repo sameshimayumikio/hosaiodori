@@ -214,7 +214,7 @@ async function startAR() {
   mindarThree = new MindARThree({
     container: document.getElementById('ar-container'),
     imageTargetSrc: config.imageTargetSrc,
-    uiScanning: 'no',
+    uiScanning: 'yes',
     warmupTolerance: 5,
     missTolerance: 30,
     filterMinCF: 0.00001,
@@ -277,6 +277,13 @@ async function startAR() {
   playButton.addEventListener('click', () => {
     if (!ready || !found || !sensorAvailable || frozen) return;
     if (!freezeToInitialPose()) return;
+    // Once playback starts, tracking is gyro-only. Keep MindAR's scan UI
+    // permanently hidden even if its internal target-loss handler shows it.
+    const scanningOverlay = mindarThree.ui?.scanningMask ||
+      document.querySelector('.mindar-ui-scanning');
+    if (scanningOverlay) {
+      scanningOverlay.style.setProperty('display', 'none', 'important');
+    }
     playButton.hidden = true;
     restartButton.hidden = false;
     setStatus('再生中：左右にスマホを向けてください。横移動は追跡しません。');
