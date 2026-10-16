@@ -22,9 +22,8 @@ const config = {
 const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
 const status = document.getElementById('test-status');
-const playButton = document.getElementById('test-play');
-const restartButton = document.getElementById('test-restart');
-restartButton.addEventListener('click', () => window.location.reload());
+const tapArea = document.getElementById('video-tap-area');
+const playIcon = document.getElementById('play-icon');
 
 const video = document.createElement('video');
 video.crossOrigin = 'anonymous';
@@ -107,6 +106,16 @@ function setStatus(message) {
   status.hidden = !message;
 }
 
+function showPlayButton() {
+  tapArea.classList.add('active');
+  playIcon.classList.add('visible');
+}
+
+function hidePlayButton() {
+  tapArea.classList.remove('active');
+  playIcon.classList.remove('visible');
+}
+
 function onDeviceOrientation(event) {
   if (event.alpha == null || event.beta == null || event.gamma == null) return;
   const radians = THREE.MathUtils.DEG2RAD;
@@ -124,7 +133,7 @@ function onDeviceOrientation(event) {
 
   sensorAvailable = true;
   if (frozen || !found || !ready) return;
-  playButton.disabled = false;
+  showPlayButton();
   setStatus('');
 }
 
@@ -200,7 +209,7 @@ async function preparePreview() {
   if (!found || frozen) return;
   ready = true;
   if (sensorAvailable) {
-    playButton.disabled = false;
+    showPlayButton();
     setStatus('');
   } else {
     setStatus(sensorPermissionDenied
@@ -261,7 +270,7 @@ async function startAR() {
     found = true;
     if (ready) {
       setStatus(sensorAvailable ? '' : '傾きセンサーの応答を待っています。');
-      playButton.disabled = !sensorAvailable;
+      if (sensorAvailable) showPlayButton();
     } else if (!loadingStarted && settleTimer == null) {
       setStatus('認識成功！ちょっと待ってね');
       settleTimer = window.setTimeout(startLoad, config.settleMs);
@@ -273,12 +282,12 @@ async function startAR() {
   anchor.onTargetLost = () => {
     if (frozen) return;
     found = false;
-    playButton.disabled = true;
+    hidePlayButton();
     if (settleTimer != null) {
       window.clearTimeout(settleTimer);
       settleTimer = null;
     }
-    setStatus('5番のアクリルスタンドをもう一度映してください。');
+    setStatus('5番子抱嫁のアクリルスタンドをもう一度映してください。');
   };
 
   video.addEventListener('loadedmetadata', updateVideoLayout);
@@ -287,32 +296,37 @@ async function startAR() {
   video.addEventListener('canplay', updateBuffer);
   window.setInterval(updateBuffer, 250);
 
-  playButton.addEventListener('click', () => {
-    if (!ready || !found || !sensorAvailable || frozen) return;
-    if (!freezeToInitialPose()) return;
-    // Once playback starts, tracking is gyro-only. Keep MindAR's scan UI
-    // permanently hidden even if its internal target-loss handler shows it.
-    const scanningOverlay = mindarThree.ui?.scanningMask ||
-      document.querySelector('.mindar-ui-scanning');
-    if (scanningOverlay) {
-      scanningOverlay.style.setProperty('display', 'none', 'important');
+  tapArea.addEventListener('click', () => {
+    if (!ready || !sensorAvailable || !video.paused) return;
+
+    if (!frozen) {
+      if (!found || !freezeToInitialPose()) return;
+      // Keep the scan overlay hidden after detaching the anchored video.
+      const scanningOverlay = mindarThree.ui?.scanningMask ||
+        document.querySelector('.mindar-ui-scanning');
+      if (scanningOverlay) {
+        scanningOverlay.style.setProperty('display', 'none', 'important');
+      }
     }
-    playButton.hidden = true;
-    restartButton.hidden = false;
-    setStatus('スマホを左右に向けて、10人の踊りを見渡そう');
+
+    hidePlayButton();
+    setStatus('スマホを左右に向けると、全員の踊りが見られるよ');
     video.muted = false;
     video.currentTime = 0;
     video.play().catch((error) => {
       console.error('Video play failed:', error);
-      setStatus('動画を再生できませんでした。ページを再読み込みしてください。');
+      setStatus('動画を再生できませんでした。もう一度タップしてください。');
+      showPlayButton();
     });
   });
 
   video.addEventListener('ended', () => {
     if (!frozen) return;
+    video.pause();
+    video.currentTime = 0;
     setStatus('');
+    showPlayButton();
   });
-
 
   await mindarThree.start();
   renderer.setAnimationLoop(() => {
@@ -370,11 +384,10 @@ async function startTest() {
     cameraReady = true;
     setStatus(sensorPermissionDenied
       ? 'カメラ起動済み。傾きセンサーへの許可も必要です。'
-      : '5番のアクリルスタンドを映してください。');
+      : '5番子抱嫁のアクリルスタンドを映してください。');
   } catch (error) {
     console.error('ALL arc camera startup failure:', error);
     setStatus('カメラ起動エラー：' + (error?.message || String(error)));
-    restartButton.hidden = false;
     booted = false;
   } finally {
     window.clearTimeout(slowStartup);
