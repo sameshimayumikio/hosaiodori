@@ -36,25 +36,7 @@
       text-align: center;
       pointer-events: none;
     }
-    #test-play, #test-restart {
-      position: fixed;
-      z-index: 8;
-      bottom: max(28px, calc(env(safe-area-inset-bottom) + 16px));
-      left: 50%;
-      transform: translateX(-50%);
-      min-width: 190px;
-      max-width: 90vw;
-      padding: 15px 22px;
-      border: 0;
-      border-radius: 999px;
-      background: #fff;
-      color: #111;
-      font: bold 17px system-ui, sans-serif;
-      cursor: pointer;
-    }
     #test-status[hidden] { display: none; }
-    #test-play:disabled { opacity: .4; }
-    #test-play[hidden], #test-restart[hidden] { display: none; }
     /* Portrait: turn all visitor-facing text and buttons 90 degrees.
        When the visitor turns the phone, landscape styles above apply
        naturally. The AR camera/canvas is intentionally never rotated. */
@@ -75,11 +57,7 @@
         max-width: none;
         transform: translate(-50%, -50%) rotate(90deg);
       }
-      #test-play, #test-restart {
-        top: 50%;
-        bottom: auto;
-        left: 48px;
-        max-width: calc(100dvh - 40px);
+      #play-icon {
         transform: translate(-50%, -50%) rotate(90deg);
       }
     }
@@ -104,8 +82,12 @@
   </div>
   <div id="ar-container"></div>
   <div id="test-status" role="status" aria-live="polite" hidden></div>
-  <button id="test-play" disabled>▶ 再生</button>
-  <button id="test-restart" hidden>もう一度見る</button>
+  <div id="video-tap-area">
+    <svg id="play-icon" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="40" cy="40" r="40" fill="#e60012" />
+      <path d="M32 24 L58 40 L32 56 Z" fill="#fff" />
+    </svg>
+  </div>
   <script>
     window.ALL_ARC_TEST_CONFIG = {
       imageTargetSrc: '../assets/05/05_target_800.mind',
@@ -126,19 +108,20 @@
     const startBtn = document.getElementById('start-button');
     const startPane = document.getElementById('start-overlay');
     const messagePane = document.getElementById('test-status');
-    const restartBtn = document.getElementById('test-restart');
     let clicked = false;
     let launched = false;
     let loadFailure = null;
 
-    restartBtn.addEventListener('click', () => window.location.reload());
+    function setPageStatus(message) {
+      messagePane.textContent = message;
+      messagePane.hidden = !message;
+    }
 
     function showLoadError(error) {
       loadFailure = error;
       const detail = error && (error.stack || error.message) || String(error);
       console.error('ALL arc module load:', error);
-      messagePane.textContent = 'AR読み込みエラー：' + detail;
-      restartBtn.hidden = false;
+      setPageStatus('AR読み込みエラー：' + detail);
       if (!clicked) {
         startBtn.textContent = '読み込みエラー（タップして内容を確認）';
       }
@@ -165,7 +148,7 @@
       if (clicked) return;
       clicked = true;
       startPane.classList.add('hidden');
-      messagePane.textContent = '起動操作を受け付けました。ARエンジンを読み込んでいます…';
+      setPageStatus('起動操作を受け付けました。ARエンジンを読み込んでいます…');
 
       try {
         if (typeof DeviceOrientationEvent !== 'undefined' &&
@@ -181,7 +164,7 @@
 
     // Explicit import allows us to report the actual rejection instead of
     // silently waiting for a module script that never calls its entrypoint.
-    const moduleUrl = new URL('../js/ar-all-arc-test.js?v=20261016arc3', document.baseURI).href;
+    const moduleUrl = new URL('../js/ar-all-arc-test.js?v=20261016arc4', document.baseURI).href;
     import(moduleUrl)
       .then(() => {
         if (!window.ALL_ARC_TEST_READY) {
@@ -194,7 +177,7 @@
 
     window.setTimeout(() => {
       if (clicked && !window.ALL_ARC_TEST_READY && !loadFailure) {
-        messagePane.textContent = 'ARライブラリの応答を待っています。通信が遅い可能性があります（20秒以上）。';
+        setPageStatus('ARライブラリの応答を待っています。通信が遅い可能性があります（20秒以上）。');
       }
     }, 20000);
   </script>
