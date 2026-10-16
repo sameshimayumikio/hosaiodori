@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ALL 円弧面＋ジャイロ テスト | ユビキタス伝芸</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="icon" href="data:," />
+  <style>
+    #start-overlay .intro {
+      width: min(88vw, 370px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      color: #fff;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      line-height: 1.6;
+    }
+    .intro h1 { font-size: 21px; margin: 0; }
+    .intro p { margin: 0; font-size: 14px; }
+    #start-button { max-width: 100%; line-height: 1.4; }
+    #test-status {
+      position: fixed;
+      z-index: 7;
+      top: max(14px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      box-sizing: border-box;
+      width: min(94vw, 470px);
+      padding: 12px 15px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, .72);
+      color: #fff;
+      font: 14px/1.5 system-ui, sans-serif;
+      text-align: center;
+      pointer-events: none;
+    }
+    #test-play, #test-restart {
+      position: fixed;
+      z-index: 8;
+      bottom: max(28px, calc(env(safe-area-inset-bottom) + 16px));
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 190px;
+      max-width: 90vw;
+      padding: 15px 22px;
+      border: 0;
+      border-radius: 999px;
+      background: #fff;
+      color: #111;
+      font: bold 17px system-ui, sans-serif;
+      cursor: pointer;
+    }
+    #test-play:disabled { opacity: .4; }
+    #test-play[hidden], #test-restart[hidden] { display: none; }
+    #test-note {
+      position: fixed;
+      z-index: 6;
+      bottom: max(98px, calc(env(safe-area-inset-bottom) + 86px));
+      left: 10px;
+      right: 10px;
+      color: #fff;
+      font: 12px/1.3 system-ui, sans-serif;
+      text-align: center;
+      text-shadow: 0 1px 4px #000;
+      pointer-events: none;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+        "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="start-overlay">
+    <div class="intro">
+      <h1>ALL 円弧面テスト</h1>
+      <p>5番を起点に、ALL集合動画を緩やかな円弧面へ配置します。左右へ向けたときの端の人物の見え方を確認してください。床面固定・歩行追跡ではありません。</p>
+      <button id="start-button" type="button">カメラ・傾きセンサーを起動</button>
+      <p>ALL透過動画を使い、サイズ・位置・円弧角度はこのindex.htmlの数値で調整します。平面版とALL本番は変更していません。</p>
+    </div>
+  </div>
+  <div id="ar-container"></div>
+  <div id="test-status" role="status" aria-live="polite">「起動」を押してください。</div>
+  <div id="test-note">5番を起点に円弧配置（ジャイロ追従）</div>
+  <button id="test-play" disabled>35秒の踊りを再生</button>
+  <button id="test-restart" hidden>最初から試す</button>
+  <script>
+    window.ALL_ARC_TEST_CONFIG = {
+      imageTargetSrc: '../assets/05/05_target_800.mind',
+      videoSrc: '../assets/all/all_dance.mp4',
+      planeScale: 3.0,          // AR動画の高さ（平面版と同じ初期値）
+      planeOffsetX: -0.5,       // 横位置。プラスで右、マイナスで左
+      planeOffsetY: 0,          // 縦位置。プラスで上、マイナスで下
+      fifthPersonFraction: 0.45, // 動画の横幅のうち、5番の基準位置（0〜1）
+      curveAngleDeg: 50,        // 円弧全体の曲がり角度。0なら平面、まず50度
+      curveSegments: 96,        // 円弧面の滑らかさ
+      brightness: 1.2
+    };
+  </script>
+  <script>
+    // Plain browser script: diagnostics and click work even if ESM dependencies fail.
+    window.ALL_ARC_TEST_READY = false;
+    window.ALL_ARC_MOTION_PERMISSION = null;
+    const startBtn = document.getElementById('start-button');
+    const startPane = document.getElementById('start-overlay');
+    const messagePane = document.getElementById('test-status');
+    const restartBtn = document.getElementById('test-restart');
+    let clicked = false;
+    let launched = false;
+    let loadFailure = null;
+
+    restartBtn.addEventListener('click', () => window.location.reload());
+
+    function showLoadError(error) {
+      loadFailure = error;
+      const detail = error && (error.stack || error.message) || String(error);
+      console.error('ALL arc module load:', error);
+      messagePane.textContent = 'AR読み込みエラー：' + detail;
+      restartBtn.hidden = false;
+      if (!clicked) {
+        startBtn.textContent = '読み込みエラー（タップして内容を確認）';
+      }
+    }
+
+    function launchWhenReady() {
+      if (!clicked || launched || loadFailure || typeof window.ALL_ARC_START !== 'function') return;
+      launched = true;
+      try {
+        Promise.resolve(window.ALL_ARC_START()).catch(showLoadError);
+      } catch (error) {
+        showLoadError(error);
+      }
+    }
+    window.addEventListener('ALL_ARC_READY', launchWhenReady);
+
+    window.addEventListener('error', event => {
+      if (!window.ALL_ARC_TEST_READY && !loadFailure) {
+        showLoadError(new Error((event.message || 'スクリプトエラー') + ' (' + (event.filename || '') + ':' + (event.lineno || '') + ')'));
+      }
+    });
+
+    startBtn.addEventListener('click', () => {
+      if (clicked) return;
+      clicked = true;
+      startPane.classList.add('hidden');
+      messagePane.textContent = '起動操作を受け付けました。ARエンジンを読み込んでいます…';
+
+      try {
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
+          window.ALL_ARC_MOTION_PERMISSION = DeviceOrientationEvent.requestPermission();
+        }
+      } catch (error) {
+        console.warn('Sensor permission request:', error);
+      }
+      if (loadFailure) showLoadError(loadFailure);
+      else launchWhenReady();
+    });
+
+    // Explicit import allows us to report the actual rejection instead of
+    // silently waiting for a module script that never calls its entrypoint.
+    const moduleUrl = new URL('../js/ar-all-arc-test.js?v=20261016arc1', document.baseURI).href;
+    import(moduleUrl)
+      .then(() => {
+        if (!window.ALL_ARC_TEST_READY) {
+          showLoadError(new Error('JS読み込み後の初期化に到達しませんでした'));
+        } else {
+          launchWhenReady();
+        }
+      })
+      .catch(showLoadError);
+
+    window.setTimeout(() => {
+      if (clicked && !window.ALL_ARC_TEST_READY && !loadFailure) {
+        messagePane.textContent = 'ARライブラリの応答を待っています。通信が遅い可能性があります（20秒以上）。';
+      }
+    }, 20000);
+  </script>
+</body>
+</html>
