@@ -45,47 +45,45 @@
       left: 50%;
       transform: translateX(-50%);
       box-sizing: border-box;
-      width: min(94vw, 470px);
-      padding: 12px 15px;
-      border-radius: 12px;
+      width: max-content;
+      max-width: calc(100vw - 28px);
+      padding: 13px 20px;
+      border-radius: 14px;
       background: rgba(0, 0, 0, .72);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 13px;
-      font: 14px/1.5 system-ui, sans-serif;
       pointer-events: none;
     }
     #look-hint[hidden] { display: none; }
     #look-hint .look-gesture {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 10px;
       flex-shrink: 0;
     }
-    #look-hint .look-arrow { font-size: 25px; line-height: 1; }
+    #look-hint .look-arrow { font-size: 35px; font-weight: 700; line-height: 1; }
     #look-hint .look-phone {
       display: block;
       box-sizing: border-box;
-      width: 40px;
-      height: 25px;
-      border: 2px solid #fff;
-      border-radius: 6px;
+      width: 60px;
+      height: 38px;
+      border: 3px solid #fff;
+      border-radius: 8px;
       position: relative;
       animation: look-left-right 2.4s ease-in-out infinite;
     }
     #look-hint .look-phone::before {
       content: '';
       position: absolute;
-      top: 3px;
-      left: 4px;
-      right: 7px;
-      bottom: 3px;
+      top: 5px;
+      left: 6px;
+      right: 10px;
+      bottom: 5px;
       border: 1px solid rgba(255,255,255,.8);
       border-radius: 2px;
     }
-    #look-hint .look-text { font-weight: 600; }
     @keyframes look-left-right {
       0%, 100% { transform: perspective(120px) rotateY(-35deg); }
       50% { transform: perspective(120px) rotateY(35deg); }
@@ -159,11 +157,18 @@
       }
       #start-overlay .intro p { font-size: 13px; }
       #start-button { padding: 13px 26px; }
-      #test-status, #look-hint {
+      #test-status {
         top: 50%;
         left: calc(100% - 47px);
         width: min(calc(100dvh - 40px), 470px);
         max-width: none;
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
+      #look-hint {
+        top: 50%;
+        left: calc(100% - 47px);
+        width: max-content;
+        max-width: calc(100dvh - 40px);
         transform: translate(-50%, -50%) rotate(90deg);
       }
       #play-icon {
@@ -196,13 +201,12 @@
   </div>
   <div id="ar-container"></div>
   <div id="test-status" role="status" aria-live="polite" hidden></div>
-  <div id="look-hint" role="status" aria-live="polite" hidden>
+  <div id="look-hint" role="img" aria-label="スマホを左右に向けて、踊りを見渡す" hidden>
     <div class="look-gesture" aria-hidden="true">
       <span class="look-arrow">←</span>
       <span class="look-phone"></span>
       <span class="look-arrow">→</span>
     </div>
-    <span class="look-text">スマホを左右に向けると、全員の踊りが見られるよ</span>
   </div>
   <div id="zoom-hint" aria-label="2本指で拡大・縮小。ダブルタップで元に戻す。" hidden>
     <div class="gesture-drawing" aria-hidden="true">
