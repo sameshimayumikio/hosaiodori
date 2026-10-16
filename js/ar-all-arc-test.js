@@ -55,6 +55,124 @@ let layout = null;
 let mindarThree = null;
 let videoPlane = null;
 
+// Uniformly scale the entire curved surface around the existing fifth-dancer
+// anchor. The camera feed and gyro orientation are not changed.
+let zoomFactor = 1;
+let pinchGesture = false;
+let pinchStartDistance = 0;
+let pinchStartZoom = 1;
+let singleTouchMoved = false;
+let singleTouchStart = null;
+let lastTap = null;
+let suppressPlayClickUntil = 0;
+
+function setZoom(nextZoom) {
+  const minZoom = Math.max(0.01, Number(config.zoomMin) || 0.12);
+  const maxZoom = Math.max(minZoom, Number(config.zoomMax) || 3.0);
+  zoomFactor = Math.min(maxZoom, Math.max(minZoom, nextZoom));
+  if (videoPlane) videoPlane.scale.setScalar(zoomFactor);
+}
+
+function touchDistance(touches) {
+  return Math.hypot(
+    touches[0].clientX - touches[1].clientX,
+    touches[0].clientY - touches[1].clientY
+  );
+}
+
+function canZoom() {
+  return ready && (found || frozen) && !!videoPlane;
+}
+
+// Touch gestures run on the document so the same pinch works whether the
+// red playback overlay is visible or not. No one-finger pan is introduced.
+document.addEventListener('touchstart', (event) => {
+  if (!canZoom()) return;
+  if (event.touches.length === 2) {
+    pinchGesture = true;
+    pinchStartDistance = touchDistance(event.touches);
+    pinchStartZoom = zoomFactor;
+    lastTap = null;
+    singleTouchStart = null;
+    event.preventDefault();
+  } else if (event.touches.length === 1 && !pinchGesture) {
+    const t = event.touches[0];
+    singleTouchStart = { x: t.clientX, y: t.clientY };
+    singleTouchMoved = false;
+  }
+}, { passive: false });
+
+document.addEventListener('touchmove', (event) => {
+  if (!canZoom()) return;
+  if (pinchGesture) {
+    if (event.touches.length === 2 && pinchStartDistance > 0) {
+      setZoom(pinchStartZoom * touchDistance(event.touches) / pinchStartDistance);
+    }
+    event.preventDefault();
+  } else if (singleTouchStart && event.touches.length === 1) {
+    const t = event.touches[0];
+    if (Math.hypot(t.clientX - singleTouchStart.x, t.clientY - singleTouchStart.y) > 24) {
+      singleTouchMoved = true;
+    }
+  }
+}, { passive: false });
+
+document.addEventListener('touchend', (event) => {
+  if (pinchGesture) {
+    event.preventDefault();
+    if (event.touches.length === 0) {
+      pinchGesture = false;
+      pinchStartDistance = 0;
+      suppressPlayClickUntil = Date.now() + 450;
+    }
+    return;
+  }
+
+  if (!canZoom() || event.touches.length !== 0 ||
+      event.changedTouches.length !== 1 || singleTouchMoved) {
+    singleTouchStart = null;
+    return;
+  }
+
+  const t = event.changedTouches[0];
+  const now = Date.now();
+  if (lastTap && now - lastTap.time < 320 &&
+      Math.hypot(t.clientX - lastTap.x, t.clientY - lastTap.y) < 48) {
+    // Prevent the second tap from triggering playback through the overlay.
+    event.preventDefault();
+    suppressPlayClickUntil = now + 450;
+    setZoom(1);
+    if (lastTap.wasPaused && !video.paused) {
+      // A first tap on a visible play overlay may already have restarted
+      // playback. Return to the previous ready/paused state on double-tap.
+      video.pause();
+      video.currentTime = 0;
+      setStatus('');
+      showPlayButton();
+    }
+    lastTap = null;
+  } else {
+    lastTap = {
+      time: now, x: t.clientX, y: t.clientY,
+      wasPaused: video.paused
+    };
+  }
+  singleTouchStart = null;
+}, { passive: false });
+
+document.addEventListener('touchcancel', () => {
+  pinchGesture = false;
+  singleTouchStart = null;
+  lastTap = null;
+  suppressPlayClickUntil = Date.now() + 450;
+});
+
+document.addEventListener('dblclick', (event) => {
+  if (!canZoom()) return;
+  event.preventDefault();
+  setZoom(1);
+}, { passive: false });
+
 function updateVideoLayout() {
   if (!videoPlane || !video.videoWidth || !video.videoHeight) return;
 
@@ -97,7 +215,7 @@ function updateVideoLayout() {
   const previousGeometry = videoPlane.geometry;
   videoPlane.geometry = geometry;
   previousGeometry.dispose();
-  videoPlane.scale.set(1, 1, 1);
+  videoPlane.scale.setScalar(zoomFactor);
   videoPlane.position.set(config.planeOffsetX, config.planeOffsetY, 0.002);
 }
 
@@ -297,6 +415,7 @@ async function startAR() {
   window.setInterval(updateBuffer, 250);
 
   tapArea.addEventListener('click', () => {
+    if (Date.now() < suppressPlayClickUntil) return;
     if (!ready || !sensorAvailable || !video.paused) return;
 
     if (!frozen) {
