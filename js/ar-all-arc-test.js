@@ -104,6 +104,7 @@ function updateVideoLayout() {
 
 function setStatus(message) {
   status.textContent = message;
+  status.hidden = !message;
 }
 
 function onDeviceOrientation(event) {
@@ -124,7 +125,7 @@ function onDeviceOrientation(event) {
   sensorAvailable = true;
   if (frozen || !found || !ready) return;
   playButton.disabled = false;
-  setStatus('5番の位置を確認して再生。再生後は左右にスマホを向けてください。');
+  setStatus('');
 }
 
 function makeVideoPlane() {
@@ -200,7 +201,7 @@ async function preparePreview() {
   ready = true;
   if (sensorAvailable) {
     playButton.disabled = false;
-    setStatus('準備完了。5番の位置を確認して「再生」を押してください。');
+    setStatus('');
   } else {
     setStatus(sensorPermissionDenied
       ? '傾きセンサーの許可がありません。ブラウザの設定を確認して再読み込みしてください。'
@@ -251,7 +252,7 @@ async function startAR() {
     loadingStarted = true;
     video.src = config.videoSrc;
     video.load();
-    setStatus('5番を認識しました。ALL集合動画を読み込んでいます…');
+    setStatus('認識成功！ちょっと待ってね');
     updateBuffer();
   };
 
@@ -259,15 +260,13 @@ async function startAR() {
     if (frozen) return;
     found = true;
     if (ready) {
-      setStatus(sensorAvailable
-        ? '準備完了。「再生」を押すとマーカーから切り離します。'
-        : '傾きセンサーの応答を待っています。');
+      setStatus(sensorAvailable ? '' : '傾きセンサーの応答を待っています。');
       playButton.disabled = !sensorAvailable;
     } else if (!loadingStarted && settleTimer == null) {
-      setStatus('5番を認識しました。位置を安定させています…');
+      setStatus('認識成功！ちょっと待ってね');
       settleTimer = window.setTimeout(startLoad, config.settleMs);
     } else {
-      setStatus('5番を認識しました。動画を読み込んでいます…');
+      setStatus('認識成功！ちょっと待ってね');
     }
   };
 
@@ -300,7 +299,7 @@ async function startAR() {
     }
     playButton.hidden = true;
     restartButton.hidden = false;
-    setStatus('再生中：左右にスマホを向けてください。横移動は追跡しません。');
+    setStatus('スマホを左右に向けて、10人の踊りを見渡そう');
     video.muted = false;
     video.currentTime = 0;
     video.play().catch((error) => {
@@ -311,7 +310,7 @@ async function startAR() {
 
   video.addEventListener('ended', () => {
     if (!frozen) return;
-    setStatus('35秒の再生が終了しました。「最初から試す」で再認識できます。');
+    setStatus('');
   });
 
 
@@ -330,7 +329,7 @@ async function startAR() {
 
 window.ALL_ARC_TEST_READY = true;
 startButton.disabled = false;
-startButton.textContent = 'ARを始める';
+startButton.textContent = 'タップして、アクリルスタンドをスキャンしよう';
 
 // Called by a plain (non-module) page click listener. This lets the click respond
 // even if a CDN import takes too long or fails before this module can execute.
@@ -371,7 +370,7 @@ async function startTest() {
     cameraReady = true;
     setStatus(sensorPermissionDenied
       ? 'カメラ起動済み。傾きセンサーへの許可も必要です。'
-      : 'カメラ起動済み。5番のアクリルスタンドを映してください。');
+      : '5番のアクリルスタンドを映してください。');
   } catch (error) {
     console.error('ALL arc camera startup failure:', error);
     setStatus('カメラ起動エラー：' + (error?.message || String(error)));
