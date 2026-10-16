@@ -138,9 +138,7 @@
 <body>
   <div id="start-overlay">
     <div class="intro">
-      <p>スマホを横向きにしてご覧ください。</p>
       <button id="start-button" type="button">タップして、アクリルスタンドをスキャンしよう</button>
-      <p>カメラと傾きセンサーの使用を許可してください。</p>
     </div>
   </div>
   <div id="ar-container"></div>
@@ -240,7 +238,7 @@
 
     // Explicit import allows us to report the actual rejection instead of
     // silently waiting for a module script that never calls its entrypoint.
-    const moduleUrl = new URL('../js/ar-all-arc-test.js?v=20261017arc6', document.baseURI).href;
+    const moduleUrl = new URL('../js/ar-all-arc-test.js?v=20261017arc7', document.baseURI).href;
     import(moduleUrl)
       .then(() => {
         if (!window.ALL_ARC_TEST_READY) {
