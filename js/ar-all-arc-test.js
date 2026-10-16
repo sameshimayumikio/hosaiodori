@@ -24,6 +24,7 @@ const startButton = document.getElementById('start-button');
 const status = document.getElementById('test-status');
 const tapArea = document.getElementById('video-tap-area');
 const playIcon = document.getElementById('play-icon');
+const zoomHint = document.getElementById('zoom-hint');
 
 const video = document.createElement('video');
 video.crossOrigin = 'anonymous';
@@ -65,6 +66,28 @@ let singleTouchMoved = false;
 let singleTouchStart = null;
 let lastTap = null;
 let suppressPlayClickUntil = 0;
+let zoomHintShown = false;
+let zoomHintTimeout = null;
+
+function showZoomHintOnce() {
+  if (zoomHintShown) return;
+  zoomHintShown = true;
+  zoomHint.hidden = false;
+  // Visible on first recognition, then gets out of the way even if unused.
+  zoomHintTimeout = window.setTimeout(() => {
+    zoomHint.hidden = true;
+    zoomHintTimeout = null;
+  }, 12000);
+}
+
+function dismissZoomHint() {
+  zoomHintShown = true;
+  zoomHint.hidden = true;
+  if (zoomHintTimeout !== null) {
+    window.clearTimeout(zoomHintTimeout);
+    zoomHintTimeout = null;
+  }
+}
 
 function setZoom(nextZoom) {
   const minZoom = Math.max(0.01, Number(config.zoomMin) || 0.12);
@@ -90,6 +113,7 @@ document.addEventListener('touchstart', (event) => {
   if (!canZoom()) return;
   if (event.touches.length === 2) {
     pinchGesture = true;
+    dismissZoomHint();
     pinchStartDistance = touchDistance(event.touches);
     pinchStartZoom = zoomFactor;
     lastTap = null;
@@ -142,6 +166,7 @@ document.addEventListener('touchend', (event) => {
     event.preventDefault();
     suppressPlayClickUntil = now + 450;
     setZoom(1);
+    dismissZoomHint();
     if (lastTap.wasPaused && !video.paused) {
       // A first tap on a visible play overlay may already have restarted
       // playback. Return to the previous ready/paused state on double-tap.
@@ -171,6 +196,7 @@ document.addEventListener('dblclick', (event) => {
   if (!canZoom()) return;
   event.preventDefault();
   setZoom(1);
+  dismissZoomHint();
 }, { passive: false });
 
 function updateVideoLayout() {
@@ -252,6 +278,7 @@ function onDeviceOrientation(event) {
   sensorAvailable = true;
   if (frozen || !found || !ready) return;
   showPlayButton();
+  showZoomHintOnce();
   setStatus('');
 }
 
@@ -328,6 +355,7 @@ async function preparePreview() {
   ready = true;
   if (sensorAvailable) {
     showPlayButton();
+    showZoomHintOnce();
     setStatus('');
   } else {
     setStatus(sensorPermissionDenied
@@ -388,7 +416,10 @@ async function startAR() {
     found = true;
     if (ready) {
       setStatus(sensorAvailable ? '' : '傾きセンサーの応答を待っています。');
-      if (sensorAvailable) showPlayButton();
+      if (sensorAvailable) {
+        showPlayButton();
+        showZoomHintOnce();
+      }
     } else if (!loadingStarted && settleTimer == null) {
       setStatus('認識成功！ちょっと待ってね');
       settleTimer = window.setTimeout(startLoad, config.settleMs);
