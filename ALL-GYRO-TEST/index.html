@@ -55,29 +55,10 @@
     }
     #test-play:disabled { opacity: .4; }
     #test-play[hidden], #test-restart[hidden] { display: none; }
-    #test-calibration {
-      position: fixed;
-      bottom: max(97px, calc(env(safe-area-inset-bottom) + 86px));
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 8;
-      background: rgba(0,0,0,.73);
-      border-radius: 10px;
-      padding: 9px 10px;
-      width: min(96vw, 360px);
-      box-sizing: border-box;
-      color: #fff;
-      text-align: center;
-      font: 12px/1.5 system-ui, sans-serif;
-    }
-    #test-calibration[hidden] { display: none; }
-    .calib-row { display: flex; justify-content: center; gap: 8px; align-items: center; margin: 5px 0; }
-    .calib-row button { border: 0; border-radius: 7px; background: #fff; color: #111; font: 15px system-ui, sans-serif; min-width: 45px; padding: 6px 10px; }
-    .calib-row span { min-width: 108px; }
     #test-note {
       position: fixed;
       z-index: 6;
-      bottom: max(212px, calc(env(safe-area-inset-bottom) + 200px));
+      bottom: max(98px, calc(env(safe-area-inset-bottom) + 86px));
       left: 10px;
       right: 10px;
       color: #fff;
@@ -103,33 +84,22 @@
       <h1>ALL ジャイロ追従テスト</h1>
       <p>5番のアクリルスタンドを認識した後、集合動画の5番付近を実物と合わせ、スマホを左右に向けて10人を見渡せるか確認します。床面固定・歩行追跡ではありません。</p>
       <button id="start-button" type="button">カメラ・傾きセンサーを起動</button>
-      <p>ALLの透過動画を使用します。位置・大きさを画面のボタンで調整できます。既存のALL本番ページは変更していません。</p>
+      <p>ALLの透過動画を使用します。大きさと位置はこのページのindex.htmlで設定します。既存のALL本番ページは変更していません。</p>
     </div>
   </div>
   <div id="ar-container"></div>
   <div id="test-status" role="status" aria-live="polite">「起動」を押してください。</div>
   <div id="test-note">5番アクスタが目印／ALL集合動画を配置</div>
-  <div id="test-calibration" hidden>
-    5番とAR内の5番が重なるよう位置調整
-    <div class="calib-row">
-      <button id="test-left" type="button" aria-label="左に移動">←</button>
-      <span id="test-shift">横位置 0.00</span>
-      <button id="test-right" type="button" aria-label="右に移動">→</button>
-    </div>
-    <div class="calib-row">
-      <button id="test-smaller" type="button" aria-label="縮小">−</button>
-      <span id="test-size">大きさ 1.00×</span>
-      <button id="test-larger" type="button" aria-label="拡大">＋</button>
-    </div>
-  </div>
   <button id="test-play" disabled>35秒の踊りを再生</button>
   <button id="test-restart" hidden>最初から試す</button>
   <script>
     window.ALL_GYRO_TEST_CONFIG = {
       imageTargetSrc: '../assets/05/05_target_800.mind',
       videoSrc: '../assets/all/all_dance.mp4',
-      personHeight: 2.0,
-      fifthPersonFraction: 0.45,
+      planeScale: 2.0,         // AR動画の高さ（大きくするなら増やす）
+      planeOffsetX: 0,        // 右へ移動：プラス／左へ：マイナス
+      planeOffsetY: 0,        // 上へ移動：プラス／下へ：マイナス
+      fifthPersonFraction: 0.45, // 動画左端から見た5番の横位置（0〜1）
       brightness: 1.2
     };
   </script>
@@ -195,7 +165,7 @@
 
     // Explicit import allows us to report the actual rejection instead of
     // silently waiting for a module script that never calls its entrypoint.
-    const moduleUrl = new URL('../js/ar-all-gyro-test.js?v=20261016f', document.baseURI).href;
+    const moduleUrl = new URL('../js/ar-all-gyro-test.js?v=20261016g', document.baseURI).href;
     import(moduleUrl)
       .then(() => {
         if (!window.ALL_GYRO_TEST_READY) {
