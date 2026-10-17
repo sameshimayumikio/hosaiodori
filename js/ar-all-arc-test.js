@@ -24,6 +24,8 @@ const startButton = document.getElementById('start-button');
 const status = document.getElementById('test-status');
 const tapArea = document.getElementById('video-tap-area');
 const playIcon = document.getElementById('play-icon');
+const lookHint = document.getElementById('look-hint');
+const zoomHint = document.getElementById('zoom-hint');
 
 const video = document.createElement('video');
 video.crossOrigin = 'anonymous';
@@ -236,6 +238,11 @@ function hidePlayButton() {
   playIcon.classList.remove('visible');
 }
 
+function setGestureHintsVisible(visible) {
+  lookHint.hidden = !visible;
+  zoomHint.hidden = !visible;
+}
+
 function onDeviceOrientation(event) {
   if (event.alpha == null || event.beta == null || event.gamma == null) return;
   const radians = THREE.MathUtils.DEG2RAD;
@@ -415,6 +422,16 @@ async function startAR() {
     setStatus('5番 子抱嫁のアクリルスタンドをもう一度映してください。');
   };
 
+  // The muted preview during recognition must not display these guides.
+  // They appear only once the actual, marker-detached dance is playing.
+  video.addEventListener('playing', () => {
+    if (frozen && !video.paused && !video.ended) setGestureHintsVisible(true);
+  });
+  video.addEventListener('pause', () => setGestureHintsVisible(false));
+  video.addEventListener('waiting', () => setGestureHintsVisible(false));
+  video.addEventListener('ended', () => setGestureHintsVisible(false));
+  video.addEventListener('error', () => setGestureHintsVisible(false));
+
   video.addEventListener('loadedmetadata', updateVideoLayout);
   video.addEventListener('progress', updateBuffer);
   video.addEventListener('loadeddata', updateBuffer);
@@ -442,7 +459,7 @@ async function startAR() {
     video.currentTime = 0;
     video.play().catch((error) => {
       console.error('Video play failed:', error);
-
+      setGestureHintsVisible(false);
       setStatus('動画を再生できませんでした。もう一度タップしてください。');
       showPlayButton();
     });
