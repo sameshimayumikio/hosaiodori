@@ -17,13 +17,28 @@
 
 ## 共通実装
 
-### 単体・全員集合
+### 単体
 
 共通ランタイム:
 
 ```
 js/ar.js
 ```
+
+### 全員集合（本番円弧版）
+
+本番 URL: `/ALL-X8M4/`（`js/ar-all-arc.js`）  
+テスト URL: `/ALL-ARC-TEST/`（`js/ar-all-arc-test.js`）
+
+- 5番 子抱嫁のアクリルスタンドを画像ターゲットとして使用（`assets/05/05_target_800.mind`）
+- 動画: `assets/all/all_dance.mp4`（SBS RGB/Alpha）
+- 5番を認識して動画を読み込んだ後、赤い再生アイコンを表示
+- 再生を開始すると認識位置を基準に映像を固定し、その後はジャイロで左右を見渡せる（位置移動の追跡は行わない）
+- 再生終了後は同じ赤い再生アイコンに戻り、再認識せずに再生可能
+- 円弧角度70°、高さ4.0、X補正 -0.5、Y補正 +0.5、5番基準位置0.45
+- ピンチズーム0.12〜3倍、ダブルタップで1倍に戻す
+- 再生中に限り、左上の左右方向アイコンと右上のピンチ操作案内を表示
+- 本番側の表示・姿勢設定は `ALL-X8M4/index.html` の `window.ALL_ARC_CONFIG` で管理
 
 ### ペア
 
@@ -62,7 +77,7 @@ resetTrackingFilterBeforeLoad: true
 初回認識時は、認識後に約1000ms追跡だけを続けて姿勢を落ち着かせ、その時点で追跡フィルタをリセットしてから動画ロードを開始します。  
 これは初回認識時にAR姿勢が大きく歪む現象を減らすための処理です。
 
-## 動画ロード・再生
+## 動画ロード・再生（単体・ペアの基本動作）
 
 - SBS MP4
 - 左半分: RGB映像
@@ -77,7 +92,7 @@ resetTrackingFilterBeforeLoad: true
 
 ## 各ページの個別設定
 
-各 `index.html` の `window.AR_CONFIG` で以下を個別調整します。
+単体・ペアは各 `index.html` の `window.AR_CONFIG` で以下を個別調整します。全員集合は上記 `window.ALL_ARC_CONFIG` を使用します。
 
 - `imageTargetSrc`
 - `videoSrc`
@@ -111,7 +126,7 @@ resetTrackingFilterBeforeLoad: true
 | 02+03 | `assets/pair-02-03/pair-02-03_target_crop_800.mind` |
 | 04+05 | `assets/pair-04-05/pair-04-05_target_crop_800.mind` |
 | 07+10 | `assets/pair-07-10/pair-07-10_target_crop_800.mind` |
-| ALL | 未配置 |
+| ALL | `assets/05/05_target_800.mind`（5番と共用） |
 
 ペア用 `.mind` は2枚のターゲット画像を同時にコンパイルし、target Aを先、target Bを後に入れます。
 
@@ -124,7 +139,7 @@ resetTrackingFilterBeforeLoad: true
 | 02+03 | 配置済み |
 | 04+05 | 配置済み |
 | 07+10 | 未配置 |
-| ALL | 未配置 |
+| ALL | 配置済み（`assets/all/all_dance.mp4`） |
 
 未配置ページは入口と設定だけ存在し、必要アセット追加後に完成します。
 
@@ -161,16 +176,20 @@ hosaiodori/
 ├── P45-V3K8/
 ├── P710-C5R2/
 ├── ALL-X8M4/
+├── ALL-ARC-TEST/    # 円弧版テスト
 ├── assets/
 │   ├── 01/ ～ 10/
 │   ├── pair-02-03/
 │   ├── pair-04-05/
-│   └── pair-07-10/
+│   ├── pair-07-10/
+│   └── all/
 ├── css/
 │   └── style.css
 ├── js/
 │   ├── ar.js
-│   └── ar-pair-two-targets.js
+│   ├── ar-pair-two-targets.js
+│   ├── ar-all-arc.js
+│   └── ar-all-arc-test.js
 └── README.md
 ```
 
