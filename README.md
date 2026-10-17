@@ -30,12 +30,12 @@ js/ar.js
 本番 URL: `/ALL-X8M4/`（`js/ar-all-arc.js`）  
 テスト URL: `/ALL-ARC-TEST/`（`js/ar-all-arc-test.js`）
 
-- 5番 子抱嫁のアクリルスタンドを画像ターゲットとして使用（`assets/05/05_target_800.mind`）
+- **本番**：6番 ささらのアクリルスタンドを画像ターゲットとして使用（`assets/06/06_target_crop_800.mind`）。テスト版は引き続き5番を使用
 - 動画: `assets/all/all_dance.mp4`（SBS RGB/Alpha）
-- 5番を認識して動画を読み込んだ後、赤い再生アイコンを表示
+- 6番を認識して動画を読み込んだ後、赤い再生アイコンを表示
 - 再生を開始すると認識位置を基準に映像を固定し、その後はジャイロで左右を見渡せる（位置移動の追跡は行わない）
 - 再生終了後は同じ赤い再生アイコンに戻り、再認識せずに再生可能
-- 円弧角度70°、高さ4.0、X補正 -0.5、Y補正 +0.5、5番基準位置0.45
+- 円弧角度70°、高さ4.0、X補正 -0.5、Y補正 +0.5、6番基準位置0.55（動画内の位置は暫定推定値。実機で微調整）
 - ピンチズーム0.12〜3倍、ダブルタップで1倍に戻す
 - 再生中に限り、左上の左右方向アイコンと右上のピンチ操作案内を表示
 - 本番側の表示・姿勢設定は `ALL-X8M4/index.html` の `window.ALL_ARC_CONFIG` で管理
@@ -126,7 +126,7 @@ resetTrackingFilterBeforeLoad: true
 | 02+03 | `assets/pair-02-03/pair-02-03_target_crop_800.mind` |
 | 04+05 | `assets/pair-04-05/pair-04-05_target_crop_800.mind` |
 | 07+10 | `assets/pair-07-10/pair-07-10_target_crop_800.mind` |
-| ALL | `assets/05/05_target_800.mind`（5番と共用） |
+| ALL | `assets/06/06_target_crop_800.mind`（6番と共用） |
 
 ペア用 `.mind` は2枚のターゲット画像を同時にコンパイルし、target Aを先、target Bを後に入れます。
 
