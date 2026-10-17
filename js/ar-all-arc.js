@@ -5,12 +5,12 @@ import { MindARThree } from 'mindar-image-three';
 // keeps the composition in a fixed direction, without positional SLAM tracking.
 // Single-person and pair AR runtimes remain separate and unchanged.
 const config = {
-  imageTargetSrc: '../assets/05/05_target_800.mind',
+  imageTargetSrc: '../assets/06/06_target_crop_800.mind',
   videoSrc: '../assets/all/all_dance.mp4',
   planeScale: 2.0, // displayed video height, in AR marker units
   planeOffsetX: 0, // horizontal shift relative to dancer 5 alignment
   planeOffsetY: 0, // vertical shift relative to the marker
-  fifthPersonFraction: 0.45, // estimated horizontal position of dancer 5 within RGB half
+  anchorPersonFraction: 0.55, // estimated horizontal position of dancer 6 within RGB half
   curveAngleDeg: 50, // total inward-facing arc from dancer 1 to dancer 10
   curveSegments: 96, // smooth surface, all 10 dancers remain on ONE video texture
   brightness: 1.2,
@@ -57,8 +57,8 @@ let layout = null;
 let mindarThree = null;
 let videoPlane = null;
 
-// Uniformly scale the entire curved surface around the existing fifth-dancer
-// anchor. The camera feed and gyro orientation are not changed.
+// Uniformly scale the curved surface around the selected dancer anchor.
+// The camera feed and gyro orientation are not changed.
 let zoomFactor = 1;
 let pinchGesture = false;
 let pinchStartDistance = 0;
@@ -191,18 +191,18 @@ function updateVideoLayout() {
   );
 
   // Geometry UVs continue to run from u=0 (dancer 1) to u=1 (dancer 10).
-  // u=fifthPersonFraction is the exact anchor for dancer 5:
-  // x=0, z=0, with the surrounding characters on an inward-curving arc.
+  // u=anchorPersonFraction sets the selected dancer's geometry at x=0, z=0,
+  // with the surrounding characters on an inward-curving arc.
   const geometry = new THREE.PlaneGeometry(arcLength, height, segments, 1);
   const positions = geometry.attributes.position;
   const uv = geometry.attributes.uv;
   for (let i = 0; i < positions.count; i += 1) {
     const u = uv.getX(i);
-    const angle = (u - config.fifthPersonFraction) * sweep;
+    const angle = (u - config.anchorPersonFraction) * sweep;
     let x, z;
     if (sweep < 0.0001) {
       // A zero-degree curve reproduces the original flat geometry.
-      x = (u - config.fifthPersonFraction) * arcLength;
+      x = (u - config.anchorPersonFraction) * arcLength;
       z = 0;
     } else {
       const radius = arcLength / sweep;
@@ -419,7 +419,7 @@ async function startAR() {
       window.clearTimeout(settleTimer);
       settleTimer = null;
     }
-    setStatus('5番 子抱嫁のアクリルスタンドをもう一度映してください。');
+    setStatus('6番 ささらのアクリルスタンドをもう一度映してください。');
   };
 
   // The muted preview during recognition must not display these guides.
@@ -530,7 +530,7 @@ async function startGroupAR() {
     cameraReady = true;
     setStatus(sensorPermissionDenied
       ? 'カメラ起動済み。傾きセンサーへの許可も必要です。'
-      : '5番 子抱嫁のアクリルスタンドを映してください。');
+      : '6番 ささらのアクリルスタンドを映してください。');
   } catch (error) {
     console.error('ALL arc camera startup failure:', error);
     setStatus('カメラ起動エラー：' + (error?.message || String(error)));
