@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>集合AR デモ | ユビキタス伝芸</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="icon" href="data:," />
+  <style>
+    #start-overlay .intro {
+      width: min(88vw, 370px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      color: #fff;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      line-height: 1.6;
+    }
+    .intro p { margin: 0; font-size: 14px; }
+    #start-button { max-width: 100%; line-height: 1.4; }
+    #ar-status {
+      position: fixed;
+      z-index: 7;
+      top: max(14px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      box-sizing: border-box;
+      width: min(94vw, 470px);
+      padding: 12px 15px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, .72);
+      color: #fff;
+      font: 14px/1.5 system-ui, sans-serif;
+      text-align: center;
+      pointer-events: none;
+    }
+    #ar-status[hidden] { display: none; }
+    /* The phone pivots left and right: turn in place rather than walk sideways. */
+    #look-hint {
+      position: fixed;
+      z-index: 7;
+      top: max(14px, env(safe-area-inset-top));
+      left: max(12px, env(safe-area-inset-left));
+      box-sizing: border-box;
+      width: max-content;
+      max-width: calc(100vw - 28px);
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: rgba(0, 0, 0, .50);
+      color: #fff;
+      opacity: .78;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    #look-hint[hidden] { display: none; }
+    #look-hint .look-gesture {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    #look-hint .look-arrow { font-size: 35px; font-weight: 700; line-height: 1; }
+    #look-hint .look-phone {
+      display: block;
+      box-sizing: border-box;
+      width: 60px;
+      height: 38px;
+      border: 3px solid #fff;
+      border-radius: 8px;
+      position: relative;
+      animation: look-left-right 2.4s ease-in-out infinite;
+    }
+    #look-hint .look-phone::before {
+      content: '';
+      position: absolute;
+      top: 5px;
+      left: 6px;
+      right: 10px;
+      bottom: 5px;
+      border: 1px solid rgba(255,255,255,.8);
+      border-radius: 2px;
+    }
+    @keyframes look-left-right {
+      0%, 100% { transform: perspective(120px) rotateY(-35deg); }
+      50% { transform: perspective(120px) rotateY(35deg); }
+    }
+    /* Small animated gesture hint, separate from AR and playback touch targets. */
+    #zoom-hint {
+      position: fixed;
+      z-index: 7;
+      right: max(12px, env(safe-area-inset-right));
+      top: max(14px, env(safe-area-inset-top));
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 13px;
+      border-radius: 15px;
+      background: rgba(0, 0, 0, .50);
+      color: #fff;
+      opacity: .78;
+      font-family: system-ui, sans-serif;
+      line-height: 1.35;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    #zoom-hint[hidden] { display: none; }
+    #zoom-hint .gesture-drawing {
+      width: 72px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    #zoom-hint .gesture-finger {
+      width: 13px;
+      height: 24px;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.3);
+    }
+    #zoom-hint .gesture-finger:first-child {
+      animation: pinch-left 2s ease-in-out infinite;
+    }
+    #zoom-hint .gesture-finger:last-child {
+      animation: pinch-right 2s ease-in-out infinite;
+    }
+    #zoom-hint .gesture-arrow { font-size: 23px; font-weight: 600; opacity: .9; }
+    #zoom-hint .gesture-title { font-size: 14px; font-weight: 700; }
+    #zoom-hint .gesture-sub { font-size: 11px; opacity: .85; }
+    @keyframes pinch-left {
+      0%, 100% { transform: translateX(10px); }
+      50% { transform: translateX(-2px); }
+    }
+    @keyframes pinch-right {
+      0%, 100% { transform: translateX(-10px); }
+      50% { transform: translateX(2px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #zoom-hint .gesture-finger, #look-hint .look-phone { animation: none; }
+    }
+    /* Keep two-finger gestures on the AR surface instead of browser page zoom. */
+    #ar-container, #video-tap-area { touch-action: none; }
+    /* Portrait: turn all visitor-facing text and buttons 90 degrees.
+       When the visitor turns the phone, landscape styles above apply
+       naturally. The AR camera/canvas is intentionally never rotated. */
+    @media (orientation: portrait) {
+      #start-overlay .intro {
+        width: calc(100dvh - 56px);
+        max-width: none;
+        max-height: calc(100vw - 24px);
+        gap: 10px;
+        transform: rotate(90deg);
+      }
+      #start-overlay .intro p { font-size: 13px; }
+      #start-button { padding: 13px 26px; }
+      #ar-status {
+        top: 50%;
+        left: calc(100% - 47px);
+        width: min(calc(100dvh - 40px), 470px);
+        max-width: none;
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
+      #look-hint {
+        top: 21%;
+        left: calc(100% - 47px);
+        width: max-content;
+        max-width: calc(100dvh - 40px);
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
+      #play-icon {
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
+      #zoom-hint {
+        top: 77%;
+        left: calc(100% - 47px);
+        right: auto;
+        bottom: auto;
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+        "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="start-overlay">
+    <div class="intro">
+      <button id="start-button" type="button" disabled>デモ利用可否を確認中…</button>
+    </div>
+  </div>
+  <div id="ar-container"></div>
+  <div id="ar-status" role="status" aria-live="polite" hidden></div>
+  <div id="look-hint" role="img" aria-label="スマホを左右に向けて、踊りを見渡す" hidden>
+    <div class="look-gesture" aria-hidden="true">
+      <span class="look-arrow">←</span>
+      <span class="look-phone"></span>
+      <span class="look-arrow">→</span>
+    </div>
+  </div>
+  <div id="zoom-hint" aria-label="2本指で拡大・縮小。ダブルタップで元に戻す。" hidden>
+    <div class="gesture-drawing" aria-hidden="true">
+      <span class="gesture-finger"></span>
+      <span class="gesture-arrow">↔</span>
+      <span class="gesture-finger"></span>
+    </div>
+    <div>
+      <div class="gesture-title">2本指で拡大・縮小</div>
+      <div class="gesture-sub">ダブルタップで元に戻す</div>
+    </div>
+  </div>
+  <div id="video-tap-area">
+    <svg id="play-icon" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="40" cy="40" r="40" fill="#e60012" />
+      <path d="M32 24 L58 40 L32 56 Z" fill="#fff" />
+    </svg>
+  </div>
+  <script>
+    // Plain browser script: diagnostics and click work even if ESM dependencies fail.
+    window.ALL_ARC_RUNTIME_READY = false;
+    window.ALL_ARC_MOTION_PERMISSION = null;
+    const startBtn = document.getElementById('start-button');
+    const startPane = document.getElementById('start-overlay');
+    const messagePane = document.getElementById('ar-status');
+    let clicked = false;
+    let launched = false;
+    let loadFailure = null;
+
+    function setPageStatus(message) {
+      messagePane.textContent = message;
+      messagePane.hidden = !message;
+    }
+
+    function showLoadError(error) {
+      loadFailure = error;
+      const detail = error && (error.stack || error.message) || String(error);
+      console.error('ALL production module load:', error);
+      setPageStatus('AR読み込みエラー：' + detail);
+      if (!clicked) {
+        startBtn.textContent = '読み込みエラー（タップして内容を確認）';
+      }
+    }
+
+    function launchWhenReady() {
+      if (!clicked || launched || loadFailure || typeof window.ALL_ARC_START !== 'function') return;
+      launched = true;
+      try {
+        Promise.resolve(window.ALL_ARC_START()).catch(showLoadError);
+      } catch (error) {
+        showLoadError(error);
+      }
+    }
+    window.addEventListener('ALL_ARC_READY', launchWhenReady);
+
+    window.addEventListener('error', event => {
+      if (!window.ALL_ARC_RUNTIME_READY && !loadFailure) {
+        showLoadError(new Error((event.message || 'スクリプトエラー') + ' (' + (event.filename || '') + ':' + (event.lineno || '') + ')'));
+      }
+    });
+
+    startBtn.addEventListener('click', () => {
+      if (clicked) return;
+      clicked = true;
+      startPane.classList.add('hidden');
+      setPageStatus('');
+
+      try {
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
+          window.ALL_ARC_MOTION_PERMISSION = DeviceOrientationEvent.requestPermission();
+        }
+      } catch (error) {
+        console.warn('Sensor permission request:', error);
+      }
+      if (loadFailure) showLoadError(loadFailure);
+      else launchWhenReady();
+    });
+
+    // Explicit import allows us to report the actual rejection instead of
+    // silently waiting for a module script that never calls its entrypoint.
+    // The demo access gate below loads the production config and runtime.
+
+    window.setTimeout(() => {
+      if (clicked && !window.ALL_ARC_RUNTIME_READY && !loadFailure) {
+        setPageStatus('ARライブラリの応答を待っています。通信が遅い可能性があります（20秒以上）。');
+      }
+    }, 20000);
+  </script>
+  <script type="module">
+// Use exactly the same shared open/closed schedule as the three pair demos.
+const button = document.getElementById('start-button');
+const READY_TEXT = 'タップして、アクリルスタンドをスキャンしよう';
+const CLOSED_TEXT = 'このARデモは現在利用できません';
+const ERROR_TEXT = 'デモ設定を確認できません';
+
+const setUnavailable = (message) => {
+  button.disabled = true;
+  button.textContent = message;
+};
+const parseBoundary = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const ms = Date.parse(value);
+  if (!Number.isFinite(ms)) throw new Error('Invalid demo access datetime');
+  return ms;
+};
+const fetchUncachedText = async (url) => {
+  const location = new URL(url, window.location.href);
+  location.searchParams.set('_', Date.now().toString());
+  const response = await fetch(location, { cache: 'no-store' });
+  if (!response.ok) throw new Error('HTTP ' + response.status + ': ' + location.pathname);
+  return response.text();
+};
+const loadProductionConfig = async () => {
+  const productionHTML = await fetchUncachedText('../ALL-X8M4/');
+  const doc = new DOMParser().parseFromString(productionHTML, 'text/html');
+  const configScript = Array.from(doc.scripts).find(
+    (script) => script.textContent.includes('window.ALL_ARC_CONFIG')
+  );
+  if (!configScript) throw new Error('ALL_ARC_CONFIG not found in production page');
+  const configMatch = configScript.textContent.match(
+    /window\.ALL_ARC_CONFIG\s*=\s*(\{[\s\S]*?\})\s*;/
+  );
+  if (!configMatch) throw new Error('ALL_ARC_CONFIG could not be parsed');
+  window.ALL_ARC_CONFIG = Function('"use strict"; return (' + configMatch[1] + ');')();
+
+  // Load the same cache-busted version of the runtime that production loads.
+  const runtimeVersion = productionHTML.match(/ar-all-arc\.js\?v=([A-Za-z0-9_-]+)/)?.[1];
+  const runtimeUrl = new URL('../js/ar-all-arc.js', document.baseURI);
+  if (runtimeVersion) runtimeUrl.searchParams.set('v', runtimeVersion);
+  return runtimeUrl.href;
+};
+
+try {
+  setUnavailable('デモ利用可否を確認中…');
+  const access = JSON.parse(await fetchUncachedText('../demo-access.json'));
+  const startAt = parseBoundary(access.startAt);
+  const endAt = parseBoundary(access.endAt);
+  const now = Date.now();
+  const isOpen =
+    access.enabled === true &&
+    (startAt === null || now >= startAt) &&
+    (endAt === null || now < endAt);
+
+  if (!isOpen) {
+    setUnavailable(CLOSED_TEXT);
+  } else {
+    const runtimeUrl = await loadProductionConfig();
+    await import(runtimeUrl);
+    if (!window.ALL_ARC_RUNTIME_READY || typeof window.ALL_ARC_START !== 'function') {
+      throw new Error('Production group AR failed to initialize');
+    }
+    button.textContent = READY_TEXT;
+    button.disabled = false;
+  }
+} catch (error) {
+  console.error('ALL demo gate failed:', error);
+  setUnavailable(ERROR_TEXT);
+}
+  </script>
+</body>
+</html>
