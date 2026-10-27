@@ -1,5 +1,5 @@
 const button = document.getElementById('start-button');
-const gateScript = document.querySelector('script[src$="/js/demo-pair-gate.js"], script[src$="../js/demo-pair-gate.js"], script[src$="js/demo-pair-gate.js"]');
+const gateScript = document.querySelector('script[type="module"][data-source][src*="demo-pair-gate.js"]');
 
 const READY_TEXT = 'タップして、アクリルスタンドをスキャンしよう';
 const CLOSED_TEXT = 'このARデモは現在利用できません';
@@ -66,7 +66,7 @@ try {
     setUnavailable(CLOSED_TEXT);
   } else {
     await loadProductionConfig();
-    await import('./ar-pair-two-targets.js');
+    await import('./ar-pair-two-targets.js?v=20261027pairscan1');
     button.textContent = READY_TEXT;
     button.disabled = false;
   }
