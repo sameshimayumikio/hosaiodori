@@ -142,6 +142,13 @@ async function startAR() {
   let previewPreparing = false;
   let settleTimer = null;
 
+  // MindAR's default scanning UI hides as soon as ANY target is found.
+  // Pair AR requires BOTH targets, so keep the scan frame until then.
+  const hideScanningNormally = mindarThree.ui.hideScanning.bind(mindarThree.ui);
+  mindarThree.ui.hideScanning = () => {
+    if (foundA && foundB) hideScanningNormally();
+  };
+
   const showLoading = () => {
     if (pairActive) loadingOverlay.style.display = 'block';
   };
@@ -279,8 +286,13 @@ async function startAR() {
   };
 
   const updatePairState = () => {
-    if (foundA && foundB) activatePair();
-    else deactivatePair();
+    if (foundA && foundB) {
+      mindarThree.ui.hideScanning();
+      activatePair();
+    } else {
+      mindarThree.ui.showScanning();
+      deactivatePair();
+    }
   };
 
   anchorA.onTargetFound = () => {
