@@ -54,7 +54,7 @@ playbackHint.textContent = 'スマホは動かさずにご覧ください';
 Object.assign(playbackHint.style, {
   position: 'fixed',
   left: '50%',
-  bottom: 'max(12px, env(safe-area-inset-bottom))',
+  bottom: 'calc(48px + env(safe-area-inset-bottom))',
   transform: 'translateX(-50%)',
   zIndex: '7',
   display: 'none',
