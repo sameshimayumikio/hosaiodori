@@ -66,7 +66,7 @@ try {
     setUnavailable(CLOSED_TEXT);
   } else {
     await loadProductionConfig();
-    await import('./ar-pair-two-targets.js?v=20261027pairscan1');
+    await import('./ar-pair-two-targets.js?v=20261028guide1');
     button.textContent = READY_TEXT;
     button.disabled = false;
   }
