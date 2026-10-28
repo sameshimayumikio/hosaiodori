@@ -304,7 +304,7 @@
 
     // Explicit import allows us to report the actual rejection instead of
     // silently waiting for a module script that never calls its entrypoint.
-    const moduleUrl = new URL('../js/ar-all-arc-test.js?v=20261017arc10', document.baseURI).href;
+    const moduleUrl = new URL('../js/ar-all-arc-test.js?v=20261028guide1', document.baseURI).href;
     import(moduleUrl)
       .then(() => {
         if (!window.ALL_ARC_TEST_READY) {
