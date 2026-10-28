@@ -224,6 +224,7 @@ function updateVideoLayout() {
 }
 
 function setStatus(message) {
+  status.style.whiteSpace = 'pre-line';
   status.textContent = message;
   status.hidden = !message;
 }
@@ -390,7 +391,7 @@ async function startAR() {
     loadingStarted = true;
     video.src = config.videoSrc;
     video.load();
-    setStatus('認識成功！ちょっと待ってね');
+    setStatus('認識成功！\nスマホを動かさずお待ちください');
     updateBuffer();
   };
 
@@ -404,10 +405,10 @@ async function startAR() {
 
       }
     } else if (!loadingStarted && settleTimer == null) {
-      setStatus('認識成功！ちょっと待ってね');
+      setStatus('認識成功！\nスマホを動かさずお待ちください');
       settleTimer = window.setTimeout(startLoad, config.settleMs);
     } else {
-      setStatus('認識成功！ちょっと待ってね');
+      setStatus('認識成功！\nスマホを動かさずお待ちください');
     }
   };
 
