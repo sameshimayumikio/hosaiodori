@@ -32,7 +32,7 @@ video.crossOrigin = 'anonymous';
 video.setAttribute('webkit-playsinline', '');
 
 const loadingOverlay = document.createElement('div');
-loadingOverlay.innerHTML = '認識成功！<br>スマホを動かさずお待ちください';
+loadingOverlay.innerHTML = '認識成功！<br>スマホを動かさずに<br>お待ちください';
 Object.assign(loadingOverlay.style, {
   position: 'fixed',
   left: '50%',
@@ -60,11 +60,11 @@ Object.assign(playbackHint.style, {
   transform: 'translateX(-50%)',
   zIndex: '7',
   display: 'none',
-  padding: '6px 12px',
+  padding: '8px 14px',
   borderRadius: '999px',
   background: 'rgba(0, 0, 0, 0.48)',
   color: '#fff',
-  font: '12px/1.4 system-ui, sans-serif',
+  font: '15px/1.4 system-ui, sans-serif',
   whiteSpace: 'nowrap',
   pointerEvents: 'none'
 });
