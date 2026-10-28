@@ -32,7 +32,7 @@ video.crossOrigin = 'anonymous';
 video.setAttribute('webkit-playsinline', '');
 
 const loadingOverlay = document.createElement('div');
-loadingOverlay.innerHTML = '認識成功！<br>ちょっと待ってね';
+loadingOverlay.innerHTML = '認識成功！<br>スマホを動かさずお待ちください';
 Object.assign(loadingOverlay.style, {
   position: 'fixed',
   left: '50%',
@@ -50,6 +50,25 @@ Object.assign(loadingOverlay.style, {
   pointerEvents: 'none'
 });
 document.body.appendChild(loadingOverlay);
+
+const playbackHint = document.createElement('div');
+playbackHint.textContent = 'スマホは動かさずにご覧ください';
+Object.assign(playbackHint.style, {
+  position: 'fixed',
+  left: '50%',
+  bottom: 'max(12px, env(safe-area-inset-bottom))',
+  transform: 'translateX(-50%)',
+  zIndex: '7',
+  display: 'none',
+  padding: '6px 12px',
+  borderRadius: '999px',
+  background: 'rgba(0, 0, 0, 0.48)',
+  color: '#fff',
+  font: '12px/1.4 system-ui, sans-serif',
+  whiteSpace: 'nowrap',
+  pointerEvents: 'none'
+});
+document.body.appendChild(playbackHint);
 
 const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
@@ -141,6 +160,18 @@ async function startAR() {
   let videoLoadStarted = false;
   let previewPreparing = false;
   let settleTimer = null;
+
+  // Actual playback only; never show during the muted preview.
+  const setPlaybackHintVisible = (visible) => {
+    playbackHint.style.display = visible ? 'block' : 'none';
+  };
+  video.addEventListener('playing', () => {
+    setPlaybackHintVisible(pairActive && playbackReady && !previewPreparing && !video.ended);
+  });
+  video.addEventListener('pause', () => setPlaybackHintVisible(false));
+  video.addEventListener('waiting', () => setPlaybackHintVisible(false));
+  video.addEventListener('ended', () => setPlaybackHintVisible(false));
+  video.addEventListener('error', () => setPlaybackHintVisible(false));
 
   // MindAR's default scanning UI hides as soon as ANY target is found.
   // Pair AR requires BOTH targets, so keep the scan frame until then.
@@ -272,6 +303,7 @@ async function startAR() {
   const deactivatePair = () => {
     if (!pairActive) return;
 
+    setPlaybackHintVisible(false);
     pairActive = false;
     playbackReady = false;
     if (settleTimer !== null) {
