@@ -372,7 +372,7 @@ async function startAR() {
     imageTargetSrc: config.imageTargetSrc,
     uiScanning: 'yes',
     warmupTolerance: 5,
-    missTolerance: 30,
+    missTolerance: 60,
     filterMinCF: 0.00001,
     filterBeta: 0.001,
   });
